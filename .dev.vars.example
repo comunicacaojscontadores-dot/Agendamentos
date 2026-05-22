@@ -1,0 +1,10 @@
+# Wrangler lê este arquivo como variáveis de ambiente durante `wrangler dev`.
+# Copie para .dev.vars (já no .gitignore) e preencha os valores reais.
+
+ZEPTOMAIL_TOKEN="Zoho-enczapikey XXXXXXXXXXXXXXXXXXXXXXXX"
+ZEPTOMAIL_FROM_ADDRESS="noreply@seudominio.com"
+ZEPTOMAIL_FROM_NAME="Agendamentos JS"
+PUBLIC_BASE_URL="https://app.seudominio.com"
+
+SUPABASE_URL="https://xxxx.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY="eyJ..."
