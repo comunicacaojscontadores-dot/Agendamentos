@@ -1,4 +1,4 @@
-import { sendBookingCancellation } from "./email.server";
+import { sendBookingConfirmation, sendBookingCancellation } from "./email.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -52,7 +52,6 @@ export const createBooking = createServerFn({ method: "POST" })
       .select("day_of_week, start_time, end_time")
       .eq("room_id", data.roomId);
 
-    // Validate using Brazil timezone (server may run in UTC).
     const { dow, hour, minute } = getBRParts(start);
     const startMin = hour * 60 + minute;
     const durMin = Math.round((end.getTime() - start.getTime()) / 60_000);
@@ -64,7 +63,6 @@ export const createBooking = createServerFn({ method: "POST" })
     });
     if (!fitsWindow) return { ok: false as const, error: "Horário fora da disponibilidade da sala." };
 
-    // 15-min buffer enforcement against existing active bookings on same day.
     const dayStart = new Date(start); dayStart.setHours(0, 0, 0, 0);
     const dayEnd = new Date(start); dayEnd.setHours(23, 59, 59, 999);
     const { data: sameDay } = await supabaseAdmin
@@ -139,7 +137,6 @@ export const createBooking = createServerFn({ method: "POST" })
     }
 
     try {
-      const { sendBookingConfirmation } = await import("./email.server");
       await sendBookingConfirmation({
         bookingId: inserted.id,
         cancelToken: inserted.cancel_token,
@@ -186,13 +183,14 @@ export const checkIsAdmin = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
     return { isAdmin: !!data };
+  });
+
 export const cancelBookingByToken = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ token: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const { data: result, error } = await supabaseAdmin.rpc("cancel_booking_by_token", { _token: data.token });
     if (error || !result) return { ok: false as const };
 
-    // Buscar dados do agendamento para enviar e-mail
     const { data: bookings } = await supabaseAdmin
       .from("bookings")
       .select("id, cancel_token, user_name, user_email, guest_emails, notes, starts_at, ends_at, rooms(name, room_number, notification_email, notify_email_enabled)")
@@ -207,21 +205,20 @@ export const cancelBookingByToken = createServerFn({ method: "POST" })
         recipients.push(room.notification_email);
       }
       try {
-  await sendBookingCancellation({
-    bookingId: bookings.id,
-    cancelToken: bookings.cancel_token,
-    roomLabel,
-    startsAt: new Date(bookings.starts_at),
-    endsAt: new Date(bookings.ends_at),
-    userName: bookings.user_name,
-    recipients,
-    notes: bookings.notes ?? null,
-  });
-} catch (e) {
-  console.error("[email] cancellation email failed:", e);
-}
+        await sendBookingCancellation({
+          bookingId: bookings.id,
+          cancelToken: bookings.cancel_token,
+          roomLabel,
+          startsAt: new Date(bookings.starts_at),
+          endsAt: new Date(bookings.ends_at),
+          userName: bookings.user_name,
+          recipients,
+          notes: bookings.notes ?? null,
+        });
+      } catch (e) {
+        console.error("[email] cancellation email failed:", e);
+      }
     }
 
     return { ok: true as const };
-  });
   });
