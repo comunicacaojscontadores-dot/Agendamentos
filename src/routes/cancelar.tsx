@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { cancelBookingByToken } from "@/lib/booking.functions";
+import { cancelBookingByToken } from "@/lib/cancel.functions";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
