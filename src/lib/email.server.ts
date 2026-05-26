@@ -1,21 +1,8 @@
-// Sends booking emails via SMTP (ZeptoMail or any SMTP provider).
-// Configure the following environment variables in Cloudflare:
-//   SMTP_HOST          — ex: smtp.zeptomail.com
-//   SMTP_PORT          — ex: 465
-//   SMTP_USER          — SMTP username / emailapikey
-//   SMTP_PASSWORD      — SMTP password
-//   SMTP_FROM_ADDRESS  — verified sender address
-//   SMTP_FROM_NAME     — sender display name
-//   PUBLIC_BASE_URL    — public app URL without trailing slash
-
 function getConfig() {
   return {
-    host: process.env.SMTP_HOST ?? "",
-    port: parseInt(process.env.SMTP_PORT ?? "465"),
-    user: process.env.SMTP_USER ?? "",
-    password: process.env.SMTP_PASSWORD ?? "",
-    fromAddress: process.env.SMTP_FROM_ADDRESS ?? "",
-    fromName: process.env.SMTP_FROM_NAME ?? "Agendamentos",
+    token: process.env.ZEPTOMAIL_TOKEN ?? "",
+    fromAddress: process.env.ZEPTOMAIL_FROM_ADDRESS ?? process.env.SMTP_FROM_ADDRESS ?? "",
+    fromName: process.env.ZEPTOMAIL_FROM_NAME ?? process.env.SMTP_FROM_NAME ?? "Agendamentos",
     baseUrl: (process.env.PUBLIC_BASE_URL ?? "").replace(/\/$/, ""),
   };
 }
@@ -58,48 +45,27 @@ function buildHtml(args: BaseArgs, cancelUrl: string, opts: { title: string; int
 }
 
 async function sendEmail(args: BaseArgs, subject: string, html: string) {
-  const { host, port, user, password, fromAddress, fromName } = getConfig();
+  const { token, fromAddress, fromName } = getConfig();
 
-  if (!host || !user || !password || !fromAddress) {
-    console.warn("[email] Configuração SMTP incompleta — pulei envio.");
+  if (!token) {
+    console.warn("[email] ZEPTOMAIL_TOKEN ausente — pulei envio.");
+    return;
+  }
+  if (!fromAddress) {
+    console.warn("[email] ZEPTOMAIL_FROM_ADDRESS ausente — pulei envio.");
     return;
   }
 
   const recipients = Array.from(new Set(args.recipients.filter(Boolean)));
   if (recipients.length === 0) return;
 
-  // Encode credentials for AUTH LOGIN
-  const userB64 = btoa(user);
-  const passB64 = btoa(password);
-  const from = `${fromName} <${fromAddress}>`;
-  const to = recipients.join(", ");
-
-  // Build raw MIME message
-  const boundary = `boundary_${Date.now()}`;
-  const raw = [
-    `From: ${from}`,
-    `To: ${to}`,
-    `Subject: ${subject}`,
-    `MIME-Version: 1.0`,
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    ``,
-    `--${boundary}`,
-    `Content-Type: text/html; charset=UTF-8`,
-    ``,
-    html,
-    `--${boundary}--`,
-  ].join("\r\n");
-
   try {
-    // Use fetch to send via ZeptoMail SMTP API (HTTP wrapper)
-    // Cloudflare Workers don't support raw TCP sockets, so we use ZeptoMail's HTTP API
-    // with SMTP-style auth
-    const response = await fetch(`https://api.zeptomail.com/v1.1/email`, {
+    const response = await fetch("https://api.zeptomail.com/v1.1/email", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        Authorization: `${user} ${password}`,
+        Authorization: token,
       },
       body: JSON.stringify({
         from: { address: fromAddress, name: fromName },
@@ -111,7 +77,7 @@ async function sendEmail(args: BaseArgs, subject: string, html: string) {
 
     if (!response.ok) {
       const body = await response.text();
-      console.error(`[email] SMTP/ZeptoMail falhou [${response.status}]: ${body}`);
+      console.error(`[email] ZeptoMail falhou [${response.status}]: ${body}`);
     } else {
       console.log("[email] enviado", { subject, to: recipients, booking: args.bookingId });
     }
