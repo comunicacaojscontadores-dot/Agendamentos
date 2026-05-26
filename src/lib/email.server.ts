@@ -26,20 +26,22 @@ function fmt(d: Date) {
   });
 }
 
-function buildHtml(args: BaseArgs, cancelUrl: string, opts: { title: string; intro: string }) {
+function buildHtml(args: BaseArgs, cancelUrl: string | null, opts: { title: string; intro: string; showCancel: boolean }) {
   return `
   <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111">
     <h2 style="margin:0 0 12px">${opts.title}</h2>
-    <p>Olá ${args.userName}, ${opts.intro}</p>
+    <p>${opts.intro}</p>
     <table style="width:100%;border-collapse:collapse;margin:16px 0">
+      <tr><td style="padding:6px 0"><b>Agendado por:</b></td><td>${args.userName}</td></tr>
       <tr><td style="padding:6px 0"><b>Sala:</b></td><td>${args.roomLabel}</td></tr>
       <tr><td style="padding:6px 0"><b>Início:</b></td><td>${fmt(args.startsAt)}</td></tr>
       <tr><td style="padding:6px 0"><b>Fim:</b></td><td>${fmt(args.endsAt)}</td></tr>
       ${args.notes ? `<tr><td style="padding:6px 0;vertical-align:top"><b>Obs.:</b></td><td>${args.notes.replace(/</g, "&lt;")}</td></tr>` : ""}
     </table>
+    ${opts.showCancel && cancelUrl ? `
     <p style="text-align:center;margin:28px 0">
       <a href="${cancelUrl}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600">Cancelar reunião</a>
-    </p>
+    </p>` : ""}
     <p style="color:#666;font-size:12px;margin-top:24px">Você está recebendo este e-mail porque foi adicionado a um agendamento.</p>
   </div>`;
 }
@@ -91,7 +93,8 @@ export async function sendBookingConfirmation(args: BaseArgs) {
   const cancelUrl = `${baseUrl}/cancelar?token=${args.cancelToken}`;
   const html = buildHtml(args, cancelUrl, {
     title: "Agendamento confirmado",
-    intro: "seu agendamento foi confirmado:",
+    intro: "Um novo agendamento foi realizado:",
+    showCancel: true,
   });
   await sendEmail(args, `Agendamento confirmado — ${args.roomLabel}`, html);
 }
@@ -100,8 +103,18 @@ export async function sendBookingReminder(args: BaseArgs) {
   const { baseUrl } = getConfig();
   const cancelUrl = `${baseUrl}/cancelar?token=${args.cancelToken}`;
   const html = buildHtml(args, cancelUrl, {
-    title: "Lembrete: seu agendamento começa em 15 minutos",
-    intro: "este é um lembrete do seu agendamento que começa em breve:",
+    title: "Lembrete: agendamento em 15 minutos",
+    intro: "Este é um lembrete do agendamento que começa em breve:",
+    showCancel: true,
   });
   await sendEmail(args, `Lembrete (15 min) — ${args.roomLabel}`, html);
+}
+
+export async function sendBookingCancellation(args: BaseArgs) {
+  const html = buildHtml(args, null, {
+    title: "Agendamento cancelado",
+    intro: "O seguinte agendamento foi cancelado:",
+    showCancel: false,
+  });
+  await sendEmail(args, `Agendamento cancelado — ${args.roomLabel}`, html);
 }

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { cancelBookingByToken } from "@/lib/booking.functions";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,11 +28,11 @@ function CancelPage() {
   };
   useEffect(load, [token]);
 
-  const handleCancel = async () => {
+ const handleCancel = async () => {
     setSubmitting(true);
-    const { data, error } = await supabase.rpc("cancel_booking_by_token", { _token: token });
+    const result = await cancelBookingByToken({ data: { token } });
     setSubmitting(false);
-    if (error || !data) { toast.error("Não foi possível cancelar."); return; }
+    if (!result.ok) { toast.error("Não foi possível cancelar."); return; }
     toast.success("Agendamento cancelado.");
     setDone(true);
     load();
