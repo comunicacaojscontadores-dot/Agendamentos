@@ -26,24 +26,96 @@ function fmt(d: Date) {
   });
 }
 
-function buildHtml(args: BaseArgs, cancelUrl: string | null, opts: { title: string; intro: string; showCancel: boolean }) {
-  return `
-  <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111">
-    <h2 style="margin:0 0 12px">${opts.title}</h2>
-    <p>${opts.intro}</p>
-    <table style="width:100%;border-collapse:collapse;margin:16px 0">
-      <tr><td style="padding:6px 0"><b>Agendado por:</b></td><td>${args.userName}</td></tr>
-      <tr><td style="padding:6px 0"><b>Sala:</b></td><td>${args.roomLabel}</td></tr>
-      <tr><td style="padding:6px 0"><b>Início:</b></td><td>${fmt(args.startsAt)}</td></tr>
-      <tr><td style="padding:6px 0"><b>Fim:</b></td><td>${fmt(args.endsAt)}</td></tr>
-      ${args.notes ? `<tr><td style="padding:6px 0;vertical-align:top"><b>Obs.:</b></td><td>${args.notes.replace(/</g, "&lt;")}</td></tr>` : ""}
-    </table>
-    ${opts.showCancel && cancelUrl ? `
-    <p style="text-align:center;margin:28px 0">
-      <a href="${cancelUrl}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600">Cancelar reunião</a>
-    </p>` : ""}
-    <p style="color:#666;font-size:12px;margin-top:24px">Você está recebendo este e-mail porque foi adicionado a um agendamento.</p>
-  </div>`;
+function buildHtml(args: BaseArgs, cancelUrl: string | null, opts: { title: string; intro: string; showCancel: boolean; accentColor: string }) {
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:32px 0">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+
+        <!-- Cabeçalho -->
+        <tr>
+          <td style="background:${opts.accentColor};padding:28px 40px;text-align:center">
+            <img src="https://jscontadores.com.br/wp-content/uploads/2026/05/cropped-logo-azul-scaled-1-2048x561.png"
+                 alt="JS Contadores" width="200" style="display:block;margin:0 auto;filter:brightness(0) invert(1)">
+          </td>
+        </tr>
+
+        <!-- Faixa título -->
+        <tr>
+          <td style="background:#f8f9fc;padding:20px 40px;border-bottom:3px solid ${opts.accentColor}">
+            <h1 style="margin:0;font-size:20px;color:#1a1a2e;font-weight:700">${opts.title}</h1>
+            <p style="margin:6px 0 0;font-size:14px;color:#666">${opts.intro}</p>
+          </td>
+        </tr>
+
+        <!-- Detalhes -->
+        <tr>
+          <td style="padding:28px 40px">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f0f0f0">
+                  <span style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.5px">Agendado por</span><br>
+                  <span style="font-size:15px;color:#1a1a2e;font-weight:600">${args.userName}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f0f0f0">
+                  <span style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.5px">Sala</span><br>
+                  <span style="font-size:15px;color:#1a1a2e;font-weight:600">${args.roomLabel}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f0f0f0">
+                  <span style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.5px">Início</span><br>
+                  <span style="font-size:15px;color:#1a1a2e;font-weight:600">${fmt(args.startsAt)}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;${args.notes ? "border-bottom:1px solid #f0f0f0" : ""}">
+                  <span style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.5px">Fim</span><br>
+                  <span style="font-size:15px;color:#1a1a2e;font-weight:600">${fmt(args.endsAt)}</span>
+                </td>
+              </tr>
+              ${args.notes ? `
+              <tr>
+                <td style="padding:10px 0">
+                  <span style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.5px">Observações</span><br>
+                  <span style="font-size:15px;color:#1a1a2e">${args.notes.replace(/</g, "&lt;").replace(/\n/g, "<br>")}</span>
+                </td>
+              </tr>` : ""}
+            </table>
+          </td>
+        </tr>
+
+        <!-- Botão cancelar -->
+        ${opts.showCancel && cancelUrl ? `
+        <tr>
+          <td style="padding:0 40px 28px;text-align:center">
+            <a href="${cancelUrl}"
+               style="display:inline-block;background:#dc2626;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:15px">
+              Cancelar reunião
+            </a>
+          </td>
+        </tr>` : ""}
+
+        <!-- Rodapé -->
+        <tr>
+          <td style="background:#f8f9fc;padding:20px 40px;text-align:center;border-top:1px solid #eee">
+            <p style="margin:0;font-size:12px;color:#999">
+              JS Contadores — Sistema de Agendamento de Salas<br>
+              Você recebeu este e-mail porque foi adicionado a um agendamento.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 }
 
 async function sendEmail(args: BaseArgs, subject: string, html: string) {
@@ -92,9 +164,10 @@ export async function sendBookingConfirmation(args: BaseArgs) {
   const { baseUrl } = getConfig();
   const cancelUrl = `${baseUrl}/cancelar?token=${args.cancelToken}`;
   const html = buildHtml(args, cancelUrl, {
-    title: "Agendamento confirmado",
-    intro: "Um novo agendamento foi realizado:",
+    title: "Agendamento confirmado ✓",
+    intro: "Um novo agendamento foi realizado com sucesso.",
     showCancel: true,
+    accentColor: "#1e40af",
   });
   await sendEmail(args, `Agendamento confirmado — ${args.roomLabel}`, html);
 }
@@ -103,9 +176,10 @@ export async function sendBookingReminder(args: BaseArgs) {
   const { baseUrl } = getConfig();
   const cancelUrl = `${baseUrl}/cancelar?token=${args.cancelToken}`;
   const html = buildHtml(args, cancelUrl, {
-    title: "Lembrete: agendamento em 15 minutos",
-    intro: "Este é um lembrete do agendamento que começa em breve:",
+    title: "Lembrete: agendamento em 15 minutos ⏰",
+    intro: "Seu agendamento começa em breve.",
     showCancel: true,
+    accentColor: "#d97706",
   });
   await sendEmail(args, `Lembrete (15 min) — ${args.roomLabel}`, html);
 }
@@ -113,8 +187,9 @@ export async function sendBookingReminder(args: BaseArgs) {
 export async function sendBookingCancellation(args: BaseArgs) {
   const html = buildHtml(args, null, {
     title: "Agendamento cancelado",
-    intro: "O seguinte agendamento foi cancelado:",
+    intro: "O seguinte agendamento foi cancelado.",
     showCancel: false,
+    accentColor: "#dc2626",
   });
   await sendEmail(args, `Agendamento cancelado — ${args.roomLabel}`, html);
 }
