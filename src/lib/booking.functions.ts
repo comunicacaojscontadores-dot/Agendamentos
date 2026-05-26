@@ -1,4 +1,3 @@
-import { sendBookingConfirmation } from "./email.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -137,6 +136,7 @@ export const createBooking = createServerFn({ method: "POST" })
     }
 
     try {
+      const { sendBookingConfirmation } = await import("./email.server");
       await sendBookingConfirmation({
         bookingId: inserted.id,
         cancelToken: inserted.cancel_token,
