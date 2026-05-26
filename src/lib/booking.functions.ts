@@ -1,3 +1,4 @@
+import { sendBookingCancellation } from "./email.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -206,20 +207,19 @@ export const cancelBookingByToken = createServerFn({ method: "POST" })
         recipients.push(room.notification_email);
       }
       try {
-        const { sendBookingCancellation } = await import("./email.server");
-        await sendBookingCancellation({
-          bookingId: bookings.id,
-          cancelToken: bookings.cancel_token,
-          roomLabel,
-          startsAt: new Date(bookings.starts_at),
-          endsAt: new Date(bookings.ends_at),
-          userName: bookings.user_name,
-          recipients,
-          notes: bookings.notes ?? null,
-        });
-      } catch (e) {
-        console.error("[email] cancellation email failed:", e);
-      }
+  await sendBookingCancellation({
+    bookingId: bookings.id,
+    cancelToken: bookings.cancel_token,
+    roomLabel,
+    startsAt: new Date(bookings.starts_at),
+    endsAt: new Date(bookings.ends_at),
+    userName: bookings.user_name,
+    recipients,
+    notes: bookings.notes ?? null,
+  });
+} catch (e) {
+  console.error("[email] cancellation email failed:", e);
+}
     }
 
     return { ok: true as const };
