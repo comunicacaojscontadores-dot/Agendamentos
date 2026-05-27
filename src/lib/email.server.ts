@@ -39,14 +39,14 @@ function buildHtml(args: BaseArgs, cancelUrl: string | null, opts: { title: stri
         <tr>
           <td style="background:${opts.accentColor};padding:28px 40px;text-align:center">
             <img src="https://jscontadores.com.br/wp-content/uploads/2026/05/cropped-logo-azul-scaled-1-2048x561.png"
-                 alt="JS Contadores" width="200" style="display:block;margin:0 auto;filter:brightness(0) invert(1)">
+                 alt="JS Contadores" width="200" style="display:block;margin:0 auto">
           </td>
         </tr>
 
         <!-- Faixa título -->
         <tr>
           <td style="background:#f8f9fc;padding:20px 40px;border-bottom:3px solid ${opts.accentColor}">
-            <h1 style="margin:0;font-size:20px;color:#1a1a2e;font-weight:700">${opts.title}</h1>
+            <h1 style="margin:0;font-size:20px;color:#1e3a5f;font-weight:700">${opts.title}</h1>
             <p style="margin:6px 0 0;font-size:14px;color:#666">${opts.intro}</p>
           </td>
         </tr>
@@ -167,7 +167,7 @@ export async function sendBookingConfirmation(args: BaseArgs) {
     title: "Agendamento confirmado ✓",
     intro: "Um novo agendamento foi realizado com sucesso.",
     showCancel: true,
-    accentColor: "#1e40af",
+    accentColor: "#dbeafe",
   });
   await sendEmail(args, `Agendamento confirmado — ${args.roomLabel}`, html);
 }
@@ -179,7 +179,7 @@ export async function sendBookingReminder(args: BaseArgs) {
     title: "Lembrete: agendamento em 15 minutos ⏰",
     intro: "Seu agendamento começa em breve.",
     showCancel: true,
-    accentColor: "#d97706",
+    accentColor: "#fef3c7",
   });
   await sendEmail(args, `Lembrete (15 min) — ${args.roomLabel}`, html);
 }
@@ -189,7 +189,7 @@ export async function sendBookingCancellation(args: BaseArgs) {
     title: "Agendamento cancelado",
     intro: "O seguinte agendamento foi cancelado.",
     showCancel: false,
-    accentColor: "#dc2626",
+    accentColor: "#fee2e2",
   });
   await sendEmail(args, `Agendamento cancelado — ${args.roomLabel}`, html);
 }
