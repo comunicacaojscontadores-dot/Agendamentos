@@ -5,12 +5,12 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
   "vars": {
-    "SUPABASE_URL": "https://revakuwhbuhkhwueklld.supabase.co",
-    "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJldmFrdXdoYnVoa2h3dWVrbGxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NDI3MTAsImV4cCI6MjA5NTAxODcxMH0.Qp1z_SbTxAj1J2x6hlBkiycsfu6VsBFwVZPTIWjcf_I",
-    "VITE_SUPABASE_URL": "https://revakuwhbuhkhwueklld.supabase.co",
-    "VITE_SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJldmFrdXdoYnVoa2h3dWVrbGxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NDI3MTAsImV4cCI6MjA5NTAxODcxMH0.Qp1z_SbTxAj1J2x6hlBkiycsfu6VsBFwVZPTIWjcf_I",
-    "VITE_SUPABASE_PROJECT_ID": "revakuwhbuhkhwueklld",
-    "PUBLIC_BASE_URL": "https://agendamentos.comunicacaojscontadores.workers.dev",
+    "SUPABASE_URL": "https://nusmfetbjcejifivhbuz.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51c21mZXRiamNlamlmaXZoYnV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3OTQ0MDAsImV4cCI6MjA5NzM3MDQwMH0.99CkBTgn-nbZbtytmN2NFsl8L8s8ymYH_D-cxNJsil4",
+    "VITE_SUPABASE_URL": "https://nusmfetbjcejifivhbuz.supabase.co",
+    "VITE_SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51c21mZXRiamNlamlmaXZoYnV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3OTQ0MDAsImV4cCI6MjA5NzM3MDQwMH0.99CkBTgn-nbZbtytmN2NFsl8L8s8ymYH_D-cxNJsil4",
+    "VITE_SUPABASE_PROJECT_ID": "nusmfetbjcejifivhbuz",
+    "PUBLIC_BASE_URL": "https://agendamentosjs.comunicacaojscontadores.workers.dev",
     "ZEPTOMAIL_FROM_ADDRESS": "noreply@jscontadores.com.br",
     "ZEPTOMAIL_FROM_NAME": "Agendamentos JS"
   }
