@@ -11,10 +11,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Building2, Calendar, Mail, MapPin, Search, Trash2, Users } from "lucide-react";
+import { Ban, Building2, Calendar, CalendarClock, CalendarDays, CheckCircle2, Clock, Mail, MapPin, Search, Trash2, Users } from "lucide-react";
 import { formatDateBR, formatTime } from "@/lib/booking-utils";
 
 export const Route = createFileRoute("/admin/")({ component: AdminBookings });
+
+type Tone = "upcoming" | "past" | "cancelled";
 
 function AdminBookings() {
   const fetchBookings = useServerFn(listAdminBookings);
@@ -64,44 +66,82 @@ function AdminBookings() {
   const cancelled = filtered.filter(b => b.status === "cancelled");
 
   return (
-    <div className="p-8">
-      <div className="flex items-end justify-between mb-6 gap-4 flex-wrap">
-        <div>
-          <h1 className="font-display text-2xl font-bold">Agendamentos</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Visualize e gerencie todas as reservas das salas.</p>
-        </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="size-4 absolute left-2.5 top-2.5 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome, sala, e-mail…" className="pl-9" />
+    <div className="p-6 sm:p-8 max-w-5xl mx-auto">
+      {/* Cabeçalho em gradiente, no mesmo estilo da tela de login */}
+      <div className="rounded-2xl bg-gradient-to-br from-primary to-secondary text-primary-foreground p-6 sm:p-7 shadow-elevated mb-6">
+        <div className="flex items-center gap-3.5">
+          <div className="size-12 rounded-xl bg-white/10 backdrop-blur grid place-items-center shrink-0">
+            <CalendarDays className="size-6" />
+          </div>
+          <div>
+            <h1 className="font-display text-2xl font-bold">Agendamentos</h1>
+            <p className="text-primary-foreground/70 text-sm mt-0.5">Visualize e gerencie todas as reservas das salas.</p>
+          </div>
         </div>
       </div>
 
+      {/* Busca */}
+      <div className="relative mb-5">
+        <Search className="size-4 absolute left-3 top-3 text-muted-foreground" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome, sala, e-mail…" className="pl-9 h-11 bg-surface shadow-soft" />
+      </div>
+
+      {/* Cartões de resumo */}
+      <div className="grid grid-cols-3 gap-3 mb-8">
+        <StatCard icon={CalendarClock} label="Próximos" value={upcoming.length} tone="upcoming" />
+        <StatCard icon={CheckCircle2} label="Realizados" value={past.length} tone="past" />
+        <StatCard icon={Ban} label="Cancelados" value={cancelled.length} tone="cancelled" />
+      </div>
+
       {items === null ? (
-        <div className="text-center py-12 text-muted-foreground">Carregando…</div>
+        <div className="text-center py-16 text-muted-foreground">Carregando…</div>
       ) : (
-        <div className="space-y-8">
-          <Section title={`Próximos (${upcoming.length})`} bookings={upcoming} onDelete={handleDelete} deletingId={deletingId} />
-          {past.length > 0 && <Section title={`Passados (${past.length})`} bookings={past} muted onDelete={handleDelete} deletingId={deletingId} />}
-          {cancelled.length > 0 && <Section title={`Cancelados (${cancelled.length})`} bookings={cancelled} muted onDelete={handleDelete} deletingId={deletingId} />}
+        <div className="space-y-10">
+          <Section title="Próximos" tone="upcoming" bookings={upcoming} onDelete={handleDelete} deletingId={deletingId} />
+          {past.length > 0 && <Section title="Realizados" tone="past" bookings={past} onDelete={handleDelete} deletingId={deletingId} />}
+          {cancelled.length > 0 && <Section title="Cancelados" tone="cancelled" bookings={cancelled} onDelete={handleDelete} deletingId={deletingId} />}
         </div>
       )}
     </div>
   );
 }
 
+function StatCard({ icon: Icon, label, value, tone }: { icon: any; label: string; value: number; tone: Tone }) {
+  const badge =
+    tone === "upcoming" ? "bg-primary-soft text-primary"
+    : tone === "cancelled" ? "bg-destructive/10 text-destructive"
+    : "bg-muted text-muted-foreground";
+  return (
+    <Card className="p-4 bg-surface shadow-soft flex items-center gap-3">
+      <div className={`size-10 rounded-lg grid place-items-center shrink-0 ${badge}`}>
+        <Icon className="size-5" />
+      </div>
+      <div className="min-w-0">
+        <div className="font-display text-2xl font-bold leading-none">{value}</div>
+        <div className="text-xs text-muted-foreground mt-1 truncate">{label}</div>
+      </div>
+    </Card>
+  );
+}
+
 interface SectionProps {
   title: string;
+  tone: Tone;
   bookings: any[];
-  muted?: boolean;
   onDelete: (id: string) => void;
   deletingId: string | null;
 }
 
-function Section({ title, bookings, muted, onDelete, deletingId }: SectionProps) {
+function Section({ title, tone, bookings, onDelete, deletingId }: SectionProps) {
+  const dot =
+    tone === "upcoming" ? "bg-primary"
+    : tone === "cancelled" ? "bg-destructive"
+    : "bg-muted-foreground/40";
+
   if (!bookings.length) return (
     <div>
-      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">{title}</h2>
-      <Card className="p-6 text-center text-muted-foreground text-sm">Nada por aqui.</Card>
+      <SectionLabel title={title} count={0} dot={dot} />
+      <Card className="p-8 text-center text-muted-foreground text-sm bg-surface shadow-soft">Nada por aqui.</Card>
     </div>
   );
 
@@ -123,74 +163,101 @@ function Section({ title, bookings, muted, onDelete, deletingId }: SectionProps)
 
   return (
     <div>
-      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">{title}</h2>
-      <div className="space-y-6">
+      <SectionLabel title={title} count={bookings.length} dot={dot} />
+      <div className="space-y-7">
         {groups.map((g) => (
           <div key={g.roomId}>
-            <div className="flex items-center gap-2 flex-wrap mb-2.5">
-              <Building2 className="size-4 text-primary" />
+            {/* Cabeçalho da sala */}
+            <div className="flex items-center gap-2.5 flex-wrap mb-3 pb-2.5 border-b border-border">
+              <div className="size-8 rounded-lg bg-primary-soft text-primary grid place-items-center shrink-0">
+                <Building2 className="size-4" />
+              </div>
               <h3 className="font-display font-bold">{g.room?.name ?? `Sala ${g.room?.room_number}`}</h3>
               <Badge variant="outline" className="text-[10px]">Sala {g.room?.room_number}</Badge>
               {g.room?.location && (
                 <span className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="size-3" /> {g.room.location}</span>
               )}
-              <span className="text-xs text-muted-foreground">· {g.items.length} {g.items.length === 1 ? "reserva" : "reservas"}</span>
+              <span className="ml-auto text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-0.5">
+                {g.items.length} {g.items.length === 1 ? "reserva" : "reservas"}
+              </span>
             </div>
             <div className="grid gap-3">
               {g.items.map((b) => (
-          <Card key={b.id} className={`p-5 bg-surface ${muted ? "opacity-70" : ""}`}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-display font-bold flex items-center gap-1.5"><Calendar className="size-4" /> {formatDateBR(new Date(b.starts_at))}</span>
-                  <span className="text-muted-foreground">{formatTime(new Date(b.starts_at))} – {formatTime(new Date(b.ends_at))}</span>
-                  {b.status === "cancelled" && <Badge variant="destructive">Cancelado</Badge>}
-                </div>
-              </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    disabled={deletingId === b.id}
-                  >
-                    <Trash2 className="size-4 mr-1.5" />
-                    Excluir
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir este agendamento?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Esta ação é permanente e não pode ser desfeita. O registro será removido do banco de dados.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => onDelete(b.id)}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Excluir
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-            <div className="mt-3 pt-3 border-t border-border text-sm space-y-1">
-              <div className="flex items-center gap-2"><span className="font-medium">{b.user_name}</span><span className="text-muted-foreground flex items-center gap-1"><Mail className="size-3" />{b.user_email}</span></div>
-              {b.guest_emails?.length > 0 && (
-                <div className="text-muted-foreground flex items-start gap-1.5"><Users className="size-3.5 mt-0.5" /><span>{b.guest_emails.join(", ")}</span></div>
-              )}
-              {b.notes && <div className="text-muted-foreground italic mt-2 whitespace-pre-wrap">"{b.notes}"</div>}
-            </div>
-          </Card>
+                <BookingCard key={b.id} b={b} tone={tone} onDelete={onDelete} deletingId={deletingId} />
               ))}
             </div>
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+function SectionLabel({ title, count, dot }: { title: string; count: number; dot: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <span className={`size-2 rounded-full ${dot}`} />
+      <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">{title}</h2>
+      <span className="text-xs text-muted-foreground font-medium">{count}</span>
+    </div>
+  );
+}
+
+function BookingCard({ b, tone, onDelete, deletingId }: { b: any; tone: Tone; onDelete: (id: string) => void; deletingId: string | null }) {
+  const accent =
+    tone === "upcoming" ? "border-l-primary"
+    : tone === "cancelled" ? "border-l-destructive"
+    : "border-l-border";
+  const dim = tone === "past" ? "opacity-75" : "";
+
+  return (
+    <Card className={`p-5 bg-surface border-l-4 ${accent} ${dim} shadow-soft hover:shadow-card transition-shadow`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-display font-bold flex items-center gap-1.5"><Calendar className="size-4 text-primary" /> {formatDateBR(new Date(b.starts_at))}</span>
+            <span className="text-sm text-muted-foreground flex items-center gap-1.5"><Clock className="size-3.5" /> {formatTime(new Date(b.starts_at))} – {formatTime(new Date(b.ends_at))}</span>
+            {b.status === "cancelled" && <Badge variant="destructive">Cancelado</Badge>}
+          </div>
+        </div>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              disabled={deletingId === b.id}
+            >
+              <Trash2 className="size-4 mr-1.5" />
+              Excluir
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir este agendamento?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação é permanente e não pode ser desfeita. O registro será removido do banco de dados.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => onDelete(b.id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+      <div className="mt-3 pt-3 border-t border-border text-sm space-y-1">
+        <div className="flex items-center gap-2 flex-wrap"><span className="font-medium">{b.user_name}</span><span className="text-muted-foreground flex items-center gap-1"><Mail className="size-3" />{b.user_email}</span></div>
+        {b.guest_emails?.length > 0 && (
+          <div className="text-muted-foreground flex items-start gap-1.5"><Users className="size-3.5 mt-0.5" /><span>{b.guest_emails.join(", ")}</span></div>
+        )}
+        {b.notes && <div className="text-muted-foreground italic mt-2 whitespace-pre-wrap">"{b.notes}"</div>}
+      </div>
+    </Card>
   );
 }
