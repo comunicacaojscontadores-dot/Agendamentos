@@ -6,7 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Building2, Loader2 } from "lucide-react";
+import { Turnstile } from "@/components/Turnstile";
 import { toast } from "sonner";
+
+// Site key pública da proteção anti-robô (a mesma do agendamento).
+// Quando vazia, o login funciona normalmente, sem verificação.
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
 export const Route = createFileRoute("/admin/login")({ component: LoginPage });
 
@@ -14,14 +19,26 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaKey, setCaptchaKey] = useState(0);
   const navigate = useNavigate();
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      ...(TURNSTILE_SITE_KEY ? { options: { captchaToken } } : {}),
+    });
     setLoading(false);
-    if (error) { toast.error("E-mail ou senha incorretos"); return; }
+    if (error) {
+      toast.error("E-mail ou senha incorretos");
+      // O token do Turnstile é de uso único — gera um novo desafio p/ tentar de novo.
+      setCaptchaToken("");
+      setCaptchaKey((k) => k + 1);
+      return;
+    }
     navigate({ to: "/admin" });
   };
 
@@ -45,7 +62,10 @@ function LoginPage() {
               <Label htmlFor="password">Senha</Label>
               <Input id="password" type="password" required minLength={6} autoComplete="new-password" autoCorrect="off" autoCapitalize="off" spellCheck={false} value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            {TURNSTILE_SITE_KEY && (
+              <Turnstile key={captchaKey} siteKey={TURNSTILE_SITE_KEY} onToken={setCaptchaToken} />
+            )}
+            <Button type="submit" className="w-full" disabled={loading || (!!TURNSTILE_SITE_KEY && !captchaToken)}>
               {loading && <Loader2 className="size-4 animate-spin" />}
               Entrar
             </Button>
