@@ -99,22 +99,21 @@ function BookPage() {
           <ArrowLeft className="size-3.5" /> Voltar para salas
         </Link>
 
-        <Card className="p-6 mb-6 bg-surface">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Sala {room.room_number}</div>
-              <h1 className="font-display text-2xl font-bold mt-1">{room.name ?? `Sala ${room.room_number}`}</h1>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5"><MapPin className="size-3.5" /> {room.location}</span>
-                {room.video_call && <span className="flex items-center gap-1.5 text-success"><Video className="size-3.5" /> Vídeo chamada</span>}
-              </div>
-            </div>
+        <div className="rounded-2xl bg-gradient-to-br from-primary to-secondary text-primary-foreground p-6 sm:p-7 mb-4 shadow-elevated">
+          <div className="text-xs uppercase tracking-wider text-primary-foreground/70 font-medium">Sala {room.room_number}</div>
+          <h1 className="font-display text-2xl font-bold mt-1">{room.name ?? `Sala ${room.room_number}`}</h1>
+          <div className="flex flex-wrap gap-2 mt-3 text-sm">
+            <span className="flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1"><MapPin className="size-3.5" /> {room.location}</span>
+            {room.video_call && <span className="flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1"><Video className="size-3.5" /> Vídeo chamada</span>}
           </div>
+        </div>
+
+        <Card className="p-5 mb-6 bg-surface shadow-soft">
           <Stepper step={step} />
         </Card>
 
         {step === 1 && (
-          <Card className="p-6 bg-surface">
+          <Card className="p-6 bg-surface shadow-soft">
             <h2 className="font-display font-bold text-xl mb-1">Duração da reunião</h2>
             <p className="text-sm text-muted-foreground mb-5">Quanto tempo você precisa?</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -135,7 +134,7 @@ function BookPage() {
         )}
 
         {step === 2 && duration && (
-          <Card className="p-6 bg-surface">
+          <Card className="p-6 bg-surface shadow-soft">
             <div className="flex items-center justify-between mb-1">
               <h2 className="font-display font-bold text-xl">Escolha a data</h2>
               <Badge variant="secondary" className="bg-primary-soft text-primary border-0">{formatDuration(duration)}</Badge>
@@ -153,7 +152,7 @@ function BookPage() {
         )}
 
         {step === 3 && date && duration && (
-          <Card className="p-6 bg-surface">
+          <Card className="p-6 bg-surface shadow-soft">
             <div className="flex items-center justify-between mb-1">
               <h2 className="font-display font-bold text-xl">Horários livres</h2>
               <Badge variant="secondary" className="bg-primary-soft text-primary border-0">{formatDateBR(date)}</Badge>
@@ -188,7 +187,7 @@ function BookPage() {
         )}
 
         {step === 4 && slot && (
-          <Card className="p-6 bg-surface">
+          <Card className="p-6 bg-surface shadow-soft">
             <h2 className="font-display font-bold text-xl mb-1">Seus dados</h2>
             <p className="text-sm text-muted-foreground mb-5">
               Reservando <strong className="text-foreground">{formatDateBR(slot.start)}</strong> das <strong className="text-foreground">{formatTime(slot.start)}</strong> às <strong className="text-foreground">{formatTime(slot.end)}</strong>.
@@ -233,7 +232,7 @@ function BookPage() {
 function Stepper({ step }: { step: 1 | 2 | 3 | 4 }) {
   const labels = ["Duração", "Data", "Horário", "Dados"];
   return (
-    <div className="flex items-center gap-2 mt-5">
+    <div className="flex items-center gap-2">
       {labels.map((l, i) => {
         const n = i + 1;
         const done = n < step;

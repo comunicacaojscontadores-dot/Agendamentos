@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { Ban, Building2, Calendar, CalendarClock, CalendarDays, CheckCircle2, Clock, Mail, MapPin, Search, Trash2, Users } from "lucide-react";
 import { formatDateBR, formatTime } from "@/lib/booking-utils";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
 export const Route = createFileRoute("/admin/")({ component: AdminBookings });
 
@@ -67,18 +68,7 @@ function AdminBookings() {
 
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto">
-      {/* Cabeçalho em gradiente, no mesmo estilo da tela de login */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary to-secondary text-primary-foreground p-6 sm:p-7 shadow-elevated mb-6">
-        <div className="flex items-center gap-3.5">
-          <div className="size-12 rounded-xl bg-white/10 backdrop-blur grid place-items-center shrink-0">
-            <CalendarDays className="size-6" />
-          </div>
-          <div>
-            <h1 className="font-display text-2xl font-bold">Agendamentos</h1>
-            <p className="text-primary-foreground/70 text-sm mt-0.5">Visualize e gerencie todas as reservas das salas.</p>
-          </div>
-        </div>
-      </div>
+      <AdminPageHeader icon={CalendarDays} title="Agendamentos" subtitle="Visualize e gerencie todas as reservas das salas." />
 
       {/* Busca */}
       <div className="relative mb-5">

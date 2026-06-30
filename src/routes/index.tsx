@@ -63,7 +63,7 @@ function HomePage() {
                   params={{ roomId: r.id }}
                   className="group"
                 >
-                  <Card className="p-6 h-full hover:shadow-elevated hover:-translate-y-0.5 hover:border-secondary/40 transition-all duration-200 bg-surface">
+                  <Card className="p-6 h-full shadow-soft hover:shadow-elevated hover:-translate-y-0.5 hover:border-secondary/40 transition-all duration-200 bg-surface">
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">

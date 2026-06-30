@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Loader2, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
 export const Route = createFileRoute("/admin/administradores")({ component: AdminsPage });
 
@@ -68,15 +69,14 @@ function AdminsPage() {
   };
 
   return (
-    <div className="p-8 max-w-3xl">
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold">Administradores</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          Cadastre novos administradores informando e-mail e senha. Cadastros públicos estão desativados.
-        </p>
-      </div>
+    <div className="p-6 sm:p-8 max-w-3xl mx-auto">
+      <AdminPageHeader
+        icon={ShieldCheck}
+        title="Administradores"
+        subtitle="Cadastre novos administradores informando e-mail e senha. Cadastros públicos estão desativados."
+      />
 
-      <Card className="p-6 bg-surface mb-6">
+      <Card className="p-6 bg-surface shadow-soft mb-6">
         <h2 className="font-semibold flex items-center gap-2 mb-4"><UserPlus className="size-4" /> Novo administrador</h2>
         <form onSubmit={handleCreate} className="grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
           <div>
@@ -102,7 +102,7 @@ function AdminsPage() {
       ) : (
         <div className="grid gap-2">
           {admins.map((a) => (
-            <Card key={a.user_id} className="p-4 bg-surface flex items-center justify-between gap-3">
+            <Card key={a.user_id} className="p-4 bg-surface border-l-4 border-l-primary shadow-soft hover:shadow-card transition-shadow flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="size-9 rounded-md bg-primary-soft text-primary grid place-items-center shrink-0">
                   <ShieldCheck className="size-4" />

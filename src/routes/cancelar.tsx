@@ -42,7 +42,7 @@ function CancelPage() {
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <main className="mx-auto max-w-xl px-6 py-12">
-        <Card className="p-8 bg-surface">
+        <Card className="p-8 bg-surface shadow-elevated">
           {info === undefined ? (
             <div className="text-center text-muted-foreground py-6">Carregando…</div>
           ) : info === null ? (

@@ -26,7 +26,7 @@ function SuccessPage() {
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <main className="mx-auto max-w-2xl px-6 py-12">
-        <Card className="p-8 text-center bg-surface">
+        <Card className="p-8 text-center bg-surface shadow-elevated">
           <div className="size-14 rounded-full bg-success/10 text-success grid place-items-center mx-auto mb-4">
             <CheckCircle2 className="size-7" />
           </div>

@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, MapPin, Video, Clock, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Video, Clock, Calendar as CalendarIcon, DoorOpen } from "lucide-react";
 import { DAYS_PT, DAYS_PT_SHORT, formatDuration } from "@/lib/booking-utils";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/salas")({ component: AdminRooms });
@@ -47,23 +48,26 @@ function AdminRooms() {
   };
 
   return (
-    <div className="p-8">
-      <div className="flex items-end justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-bold">Salas</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Gerencie salas, vídeo chamada, durações e horários disponíveis.</p>
-        </div>
-        <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="size-4" /> Nova sala</Button>
-      </div>
+    <div className="p-6 sm:p-8 max-w-5xl mx-auto">
+      <AdminPageHeader
+        icon={DoorOpen}
+        title="Salas"
+        subtitle="Gerencie salas, vídeo chamada, durações e horários disponíveis."
+        action={
+          <Button onClick={() => { setEditing(null); setOpen(true); }} className="bg-primary-foreground text-primary hover:bg-primary-foreground/90">
+            <Plus className="size-4" /> Nova sala
+          </Button>
+        }
+      />
 
       <div className="grid gap-3">
         {rooms.length === 0 && (
-          <Card className="p-10 text-center text-muted-foreground">Nenhuma sala cadastrada. Crie a primeira.</Card>
+          <Card className="p-10 text-center text-muted-foreground bg-surface shadow-soft">Nenhuma sala cadastrada. Crie a primeira.</Card>
         )}
         {rooms.map((r) => {
           const ra = avail.filter(a => a.room_id === r.id).sort((x, y) => x.day_of_week - y.day_of_week);
           return (
-            <Card key={r.id} className="p-5 bg-surface">
+            <Card key={r.id} className={`p-5 bg-surface border-l-4 shadow-soft hover:shadow-card transition-shadow ${r.active ? "border-l-primary" : "border-l-border opacity-75"}`}>
               <div className="flex justify-between items-start gap-3 flex-wrap">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -229,7 +233,7 @@ function RoomDialog({ open, onOpenChange, editing, availability, onSaved }: {
                 </div>
                 <p className="text-xs text-muted-foreground pl-6">
                   Os eventos aparecem na agenda da conta Google conectada ao sistema. Se ainda não houver
-                  conta conectada, peça ao Lovable para conectar uma vez (basta autorizar no Google).
+                  conta conectada, é necessário autorizar o acesso no Google uma única vez.
                 </p>
               </>
             )}
