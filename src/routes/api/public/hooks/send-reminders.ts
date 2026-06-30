@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getRequest } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendBookingReminder } from "@/lib/email.server";
 
@@ -9,6 +10,17 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
   server: {
     handlers: {
       POST: async () => {
+        // Segurança: se REMINDER_SECRET estiver configurado, exige que o chamador
+        // (o cron do Supabase) envie o mesmo valor no header "x-cron-secret".
+        // Se não estiver configurado, o endpoint segue aberto (compatibilidade).
+        const secret = process.env.REMINDER_SECRET;
+        if (secret && getRequest().headers.get("x-cron-secret") !== secret) {
+          return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
         const now = new Date();
         const from = new Date(now.getTime() + 14 * 60_000).toISOString();
         const to = new Date(now.getTime() + 16 * 60_000).toISOString();

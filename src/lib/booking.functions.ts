@@ -11,7 +11,29 @@ const createSchema = z.object({
   userEmail: z.string().trim().email().max(255),
   guestEmails: z.array(z.string().trim().email().max(255)).max(20).default([]),
   notes: z.string().trim().max(2000).optional().nullable(),
+  turnstileToken: z.string().max(2048).optional().default(""),
 });
+
+// Verifica o token anti-robô (Turnstile) com a Cloudflare.
+// Só é exigido quando TURNSTILE_SECRET_KEY está configurado no servidor;
+// sem ele, a verificação é ignorada (mantém o agendamento funcionando).
+async function verifyTurnstile(token: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) return { ok: true };
+  if (!token) return { ok: false, error: "Confirme que você não é um robô e tente novamente." };
+  try {
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ secret, response: token }),
+    });
+    const data = (await res.json()) as { success?: boolean };
+    if (!data.success) return { ok: false, error: "Verificação de segurança falhou. Recarregue a página e tente novamente." };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Não foi possível validar a verificação de segurança. Tente novamente." };
+  }
+}
 
 function getBRParts(d: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -32,6 +54,9 @@ const BUFFER_MIN = 15;
 export const createBooking = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => createSchema.parse(d))
   .handler(async ({ data }) => {
+    const captcha = await verifyTurnstile(data.turnstileToken);
+    if (!captcha.ok) return { ok: false as const, error: captcha.error };
+
     const start = new Date(data.startsAt);
     const end = new Date(data.endsAt);
     const now = new Date();

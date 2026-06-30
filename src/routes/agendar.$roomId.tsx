@@ -12,8 +12,13 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Calendar as CalendarIcon, Clock, MapPin, Video, Check, Loader2, X } from "lucide-react";
 import { generateSlots, formatDuration, formatDateBR, formatTime, DAYS_PT_SHORT, type AvailabilityWindow, type BookedSlot } from "@/lib/booking-utils";
 import { createBooking } from "@/lib/booking.functions";
+import { Turnstile } from "@/components/Turnstile";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+// Site key pública da proteção anti-robô. Quando vazia, o widget não aparece
+// e o agendamento funciona normalmente (proteção desligada).
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
 export const Route = createFileRoute("/agendar/$roomId")({ component: BookPage });
 
@@ -33,6 +38,7 @@ function BookPage() {
   const [email, setEmail] = useState("");
   const [guestsRaw, setGuestsRaw] = useState("");
   const [notes, setNotes] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const create = useServerFn(createBooking);
 
@@ -71,6 +77,7 @@ function BookPage() {
         userEmail: email,
         guestEmails: guests,
         notes: notes || null,
+        turnstileToken: captchaToken,
       },
     });
     setSubmitting(false);
@@ -79,7 +86,10 @@ function BookPage() {
     navigate({ to: "/sucesso", search: { token: res.cancelToken } });
   };
 
-  const validForm = name.trim().length > 0 && /\S+@\S+\.\S+/.test(email);
+  const validForm =
+    name.trim().length > 0 &&
+    /\S+@\S+\.\S+/.test(email) &&
+    (!TURNSTILE_SITE_KEY || captchaToken.length > 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -202,6 +212,11 @@ function BookPage() {
                 <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Pauta, contexto, materiais necessários…" maxLength={2000} />
               </div>
             </div>
+            {TURNSTILE_SITE_KEY && (
+              <div className="mt-5">
+                <Turnstile siteKey={TURNSTILE_SITE_KEY} onToken={setCaptchaToken} />
+              </div>
+            )}
             <div className="mt-6 flex justify-between">
               <Button variant="ghost" onClick={() => setStep(3)} disabled={submitting}><ArrowLeft className="size-4" />Voltar</Button>
               <Button onClick={handleSubmit} disabled={!validForm || submitting} size="lg">
