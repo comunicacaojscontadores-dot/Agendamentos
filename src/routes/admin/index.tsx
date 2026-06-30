@@ -11,7 +11,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Calendar, Mail, MapPin, Search, Trash2, Users } from "lucide-react";
+import { Building2, Calendar, Mail, MapPin, Search, Trash2, Users } from "lucide-react";
 import { formatDateBR, formatTime } from "@/lib/booking-utils";
 
 export const Route = createFileRoute("/admin/")({ component: AdminBookings });
@@ -57,7 +57,9 @@ function AdminBookings() {
       || b.rooms?.room_number?.toLowerCase().includes(s);
   });
 
-  const upcoming = filtered.filter(b => b.status === "active" && new Date(b.starts_at) >= new Date());
+  const upcoming = filtered
+    .filter(b => b.status === "active" && new Date(b.starts_at) >= new Date())
+    .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
   const past = filtered.filter(b => b.status === "active" && new Date(b.starts_at) < new Date());
   const cancelled = filtered.filter(b => b.status === "cancelled");
 
@@ -102,23 +104,47 @@ function Section({ title, bookings, muted, onDelete, deletingId }: SectionProps)
       <Card className="p-6 text-center text-muted-foreground text-sm">Nada por aqui.</Card>
     </div>
   );
+
+  // Agrupa os agendamentos por sala, preservando a ordem (já vêm ordenados por data).
+  const groups: { roomId: string; room: any; items: any[] }[] = [];
+  const byRoom = new Map<string, number>();
+  for (const b of bookings) {
+    const key = b.room_id ?? "sem-sala";
+    if (!byRoom.has(key)) {
+      byRoom.set(key, groups.length);
+      groups.push({ roomId: key, room: b.rooms, items: [] });
+    }
+    groups[byRoom.get(key)!].items.push(b);
+  }
+  // Ordena as salas por número (1, 2, 10… na ordem natural).
+  groups.sort((a, b) =>
+    (a.room?.room_number ?? "").localeCompare(b.room?.room_number ?? "", "pt-BR", { numeric: true })
+  );
+
   return (
     <div>
       <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">{title}</h2>
-      <div className="grid gap-3">
-        {bookings.map((b) => (
+      <div className="space-y-6">
+        {groups.map((g) => (
+          <div key={g.roomId}>
+            <div className="flex items-center gap-2 flex-wrap mb-2.5">
+              <Building2 className="size-4 text-primary" />
+              <h3 className="font-display font-bold">{g.room?.name ?? `Sala ${g.room?.room_number}`}</h3>
+              <Badge variant="outline" className="text-[10px]">Sala {g.room?.room_number}</Badge>
+              {g.room?.location && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="size-3" /> {g.room.location}</span>
+              )}
+              <span className="text-xs text-muted-foreground">· {g.items.length} {g.items.length === 1 ? "reserva" : "reservas"}</span>
+            </div>
+            <div className="grid gap-3">
+              {g.items.map((b) => (
           <Card key={b.id} className={`p-5 bg-surface ${muted ? "opacity-70" : ""}`}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-display font-bold">{b.rooms?.name ?? `Sala ${b.rooms?.room_number}`}</span>
-                  <Badge variant="outline" className="text-[10px]">Sala {b.rooms?.room_number}</Badge>
+                  <span className="font-display font-bold flex items-center gap-1.5"><Calendar className="size-4" /> {formatDateBR(new Date(b.starts_at))}</span>
+                  <span className="text-muted-foreground">{formatTime(new Date(b.starts_at))} – {formatTime(new Date(b.ends_at))}</span>
                   {b.status === "cancelled" && <Badge variant="destructive">Cancelado</Badge>}
-                </div>
-                <div className="text-sm text-muted-foreground mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
-                  <span className="flex items-center gap-1.5"><Calendar className="size-3.5" /> {formatDateBR(new Date(b.starts_at))}</span>
-                  <span className="flex items-center gap-1.5">{formatTime(new Date(b.starts_at))} – {formatTime(new Date(b.ends_at))}</span>
-                  <span className="flex items-center gap-1.5"><MapPin className="size-3.5" /> {b.rooms?.location}</span>
                 </div>
               </div>
               <AlertDialog>
@@ -160,6 +186,9 @@ function Section({ title, bookings, muted, onDelete, deletingId }: SectionProps)
               {b.notes && <div className="text-muted-foreground italic mt-2 whitespace-pre-wrap">"{b.notes}"</div>}
             </div>
           </Card>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>
