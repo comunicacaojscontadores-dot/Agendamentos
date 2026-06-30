@@ -185,21 +185,29 @@ export const listAdminBookings = createServerFn({ method: "GET" })
     const { supabase } = context;
     const { data, error } = await supabase
       .from("bookings")
-      .select("id, room_id, user_name, user_email, guest_emails, notes, starts_at, ends_at, status, created_at, cancelled_at, rooms(name, room_number, location)")
+      .select("id, room_id, user_name, user_email, guest_emails, notes, starts_at, ends_at, status, created_at, cancelled_at, cancelled_by, rooms(name, room_number, location)")
       .order("starts_at", { ascending: false })
       .limit(500);
     if (error) throw error;
     return { bookings: data ?? [] };
   });
 
-export const deleteBooking = createServerFn({ method: "POST" })
+// Cancela um agendamento pelo painel: NÃO apaga o registro — apenas marca como
+// cancelado, grava data/hora e quem cancelou (e-mail do admin logado). O horário
+// volta a ficar disponível porque a restrição de conflito só considera os ativos.
+export const adminCancelBooking = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const { error } = await supabase.from("bookings").delete().eq("id", data.id);
+    const { supabase, claims } = context;
+    const cancelledBy = (claims as any)?.email ?? "administrador";
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancelled_by: cancelledBy } as any)
+      .eq("id", data.id)
+      .eq("status", "active");
     if (error) return { ok: false as const, error: error.message };
-    return { ok: true as const };
+    return { ok: true as const, cancelledBy };
   });
 
 export const checkIsAdmin = createServerFn({ method: "GET" })

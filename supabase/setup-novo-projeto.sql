@@ -121,7 +121,8 @@ create table public.bookings (
   cancel_token uuid not null default gen_random_uuid() unique,
   reminder_sent boolean not null default false,
   created_at timestamptz not null default now(),
-  cancelled_at timestamptz
+  cancelled_at timestamptz,
+  cancelled_by text
 );
 
 alter table public.bookings enable row level security;

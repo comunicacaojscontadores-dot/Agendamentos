@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { listAdminBookings, deleteBooking } from "@/lib/booking.functions";
+import { listAdminBookings, adminCancelBooking } from "@/lib/booking.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Ban, Building2, Calendar, CalendarClock, CalendarDays, CheckCircle2, Clock, Mail, MapPin, Search, Trash2, Users } from "lucide-react";
+import { Ban, Building2, Calendar, CalendarClock, CalendarDays, CheckCircle2, Clock, Mail, MapPin, Search, Users } from "lucide-react";
 import { formatDateBR, formatTime } from "@/lib/booking-utils";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
@@ -21,10 +21,10 @@ type Tone = "upcoming" | "past" | "cancelled";
 
 function AdminBookings() {
   const fetchBookings = useServerFn(listAdminBookings);
-  const removeBooking = useServerFn(deleteBooking);
+  const cancelBooking = useServerFn(adminCancelBooking);
   const [items, setItems] = useState<any[] | null>(null);
   const [q, setQ] = useState("");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const reload = () => {
     fetchBookings({ data: undefined as any })
@@ -34,20 +34,25 @@ function AdminBookings() {
 
   useEffect(reload, [fetchBookings]);
 
-  const handleDelete = async (id: string) => {
-    setDeletingId(id);
+  const handleCancel = async (id: string) => {
+    setCancellingId(id);
     try {
-      const res = await removeBooking({ data: { id } });
+      const res = await cancelBooking({ data: { id } });
       if (res.ok) {
-        toast.success("Agendamento excluído");
-        setItems((prev) => (prev ?? []).filter((b) => b.id !== id));
+        toast.success("Agendamento cancelado");
+        // Mantém o registro na tela, apenas marcado como cancelado.
+        setItems((prev) => (prev ?? []).map((b) =>
+          b.id === id
+            ? { ...b, status: "cancelled", cancelled_at: new Date().toISOString(), cancelled_by: res.cancelledBy }
+            : b
+        ));
       } else {
-        toast.error(res.error || "Não foi possível excluir");
+        toast.error(res.error || "Não foi possível cancelar");
       }
     } catch (e: any) {
-      toast.error(e?.message || "Erro ao excluir");
+      toast.error(e?.message || "Erro ao cancelar");
     } finally {
-      setDeletingId(null);
+      setCancellingId(null);
     }
   };
 
@@ -87,9 +92,9 @@ function AdminBookings() {
         <div className="text-center py-16 text-muted-foreground">Carregando…</div>
       ) : (
         <div className="space-y-10">
-          <Section title="Próximos" tone="upcoming" bookings={upcoming} onDelete={handleDelete} deletingId={deletingId} />
-          {past.length > 0 && <Section title="Realizados" tone="past" bookings={past} onDelete={handleDelete} deletingId={deletingId} />}
-          {cancelled.length > 0 && <Section title="Cancelados" tone="cancelled" bookings={cancelled} onDelete={handleDelete} deletingId={deletingId} />}
+          <Section title="Próximos" tone="upcoming" bookings={upcoming} onCancel={handleCancel} cancellingId={cancellingId} />
+          {past.length > 0 && <Section title="Realizados" tone="past" bookings={past} onCancel={handleCancel} cancellingId={cancellingId} />}
+          {cancelled.length > 0 && <Section title="Cancelados" tone="cancelled" bookings={cancelled} onCancel={handleCancel} cancellingId={cancellingId} />}
         </div>
       )}
     </div>
@@ -118,11 +123,11 @@ interface SectionProps {
   title: string;
   tone: Tone;
   bookings: any[];
-  onDelete: (id: string) => void;
-  deletingId: string | null;
+  onCancel: (id: string) => void;
+  cancellingId: string | null;
 }
 
-function Section({ title, tone, bookings, onDelete, deletingId }: SectionProps) {
+function Section({ title, tone, bookings, onCancel, cancellingId }: SectionProps) {
   const dot =
     tone === "upcoming" ? "bg-primary"
     : tone === "cancelled" ? "bg-destructive"
@@ -173,7 +178,7 @@ function Section({ title, tone, bookings, onDelete, deletingId }: SectionProps) 
             </div>
             <div className="grid gap-3">
               {g.items.map((b) => (
-                <BookingCard key={b.id} b={b} tone={tone} onDelete={onDelete} deletingId={deletingId} />
+                <BookingCard key={b.id} b={b} tone={tone} onCancel={onCancel} cancellingId={cancellingId} />
               ))}
             </div>
           </div>
@@ -193,12 +198,13 @@ function SectionLabel({ title, count, dot }: { title: string; count: number; dot
   );
 }
 
-function BookingCard({ b, tone, onDelete, deletingId }: { b: any; tone: Tone; onDelete: (id: string) => void; deletingId: string | null }) {
+function BookingCard({ b, tone, onCancel, cancellingId }: { b: any; tone: Tone; onCancel: (id: string) => void; cancellingId: string | null }) {
   const accent =
     tone === "upcoming" ? "border-l-primary"
     : tone === "cancelled" ? "border-l-destructive"
     : "border-l-border";
   const dim = tone === "past" ? "opacity-75" : "";
+  const isCancelled = b.status === "cancelled";
 
   return (
     <Card className={`p-5 bg-surface border-l-4 ${accent} ${dim} shadow-soft hover:shadow-card transition-shadow`}>
@@ -207,39 +213,42 @@ function BookingCard({ b, tone, onDelete, deletingId }: { b: any; tone: Tone; on
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-display font-bold flex items-center gap-1.5"><Calendar className="size-4 text-primary" /> {formatDateBR(new Date(b.starts_at))}</span>
             <span className="text-sm text-muted-foreground flex items-center gap-1.5"><Clock className="size-3.5" /> {formatTime(new Date(b.starts_at))} – {formatTime(new Date(b.ends_at))}</span>
-            {b.status === "cancelled" && <Badge variant="destructive">Cancelado</Badge>}
+            {isCancelled && <Badge variant="destructive">Cancelado</Badge>}
           </div>
         </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              disabled={deletingId === b.id}
-            >
-              <Trash2 className="size-4 mr-1.5" />
-              Excluir
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Excluir este agendamento?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta ação é permanente e não pode ser desfeita. O registro será removido do banco de dados.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => onDelete(b.id)}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+        {!isCancelled && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                disabled={cancellingId === b.id}
               >
-                Excluir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                <Ban className="size-4 mr-1.5" />
+                Cancelar
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Cancelar este agendamento?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  O horário voltará a ficar disponível e o registro ficará marcado como
+                  cancelado por você. Esta ação não apaga o agendamento — ele continua no histórico.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Voltar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => onCancel(b.id)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Cancelar agendamento
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
       <div className="mt-3 pt-3 border-t border-border text-sm space-y-1">
         <div className="flex items-center gap-2 flex-wrap"><span className="font-medium">{b.user_name}</span><span className="text-muted-foreground flex items-center gap-1"><Mail className="size-3" />{b.user_email}</span></div>
@@ -247,6 +256,12 @@ function BookingCard({ b, tone, onDelete, deletingId }: { b: any; tone: Tone; on
           <div className="text-muted-foreground flex items-start gap-1.5"><Users className="size-3.5 mt-0.5" /><span>{b.guest_emails.join(", ")}</span></div>
         )}
         {b.notes && <div className="text-muted-foreground italic mt-2 whitespace-pre-wrap">"{b.notes}"</div>}
+        {isCancelled && (b.cancelled_by || b.cancelled_at) && (
+          <div className="text-xs text-destructive/80 flex items-center gap-1.5 mt-2 pt-2 border-t border-border">
+            <Ban className="size-3" />
+            Cancelado{b.cancelled_by ? ` por ${b.cancelled_by}` : ""}{b.cancelled_at ? ` em ${formatDateBR(new Date(b.cancelled_at))} às ${formatTime(new Date(b.cancelled_at))}` : ""}
+          </div>
+        )}
       </div>
     </Card>
   );
