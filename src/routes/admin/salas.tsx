@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, MapPin, Video, Clock, Calendar as CalendarIcon, DoorOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Video, Clock, DoorOpen } from "lucide-react";
 import { DAYS_PT, DAYS_PT_SHORT, formatDuration, FULL_DAY_MIN } from "@/lib/booking-utils";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { toast } from "sonner";
@@ -219,25 +219,14 @@ function RoomDialog({ open, onOpenChange, editing, availability, onSaved }: {
               </div>
             )}
           </div>
-          <div className="space-y-2 rounded-md border border-border p-3">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="size-4 text-muted-foreground" />
-              <Switch checked={gcalEnabled} onCheckedChange={(v) => { setGcalEnabled(v); if (!v) setMeetEnabled(false); }} />
-              <Label>Sincronizar com Google Calendar</Label>
-            </div>
-            {gcalEnabled && (
-              <>
-                <div className="flex items-center gap-2 pl-6">
-                  <Switch checked={meetEnabled} onCheckedChange={setMeetEnabled} />
-                  <Label>Gerar link do Google Meet automaticamente</Label>
-                </div>
-                <p className="text-xs text-muted-foreground pl-6">
-                  Os eventos aparecem na agenda da conta Google conectada ao sistema. Se ainda não houver
-                  conta conectada, é necessário autorizar o acesso no Google uma única vez.
-                </p>
-              </>
-            )}
-          </div>
+          {/*
+            Integração com Google Calendar / Meet temporariamente OCULTA.
+            A ligação antiga dependia do gateway do Lovable, que não funciona
+            após a migração. Para reativar no futuro: recriar a integração
+            direto com o Google (OAuth) e voltar a exibir estes controles.
+            O estado (gcalEnabled/meetEnabled) é preservado no handleSave, então
+            nada é apagado — só deixa de ser oferecido no painel.
+          */}
           <div>
             <Label>Durações disponíveis *</Label>
             <div className="flex flex-wrap gap-2 mt-1.5">
