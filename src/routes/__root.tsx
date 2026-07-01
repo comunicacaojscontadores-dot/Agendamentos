@@ -80,9 +80,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:title", content: "JS Contadores · Agendamento de Salas" },
       { name: "twitter:description", content: "Reserve salas de reunião, atendimento, diretoria,  aula e refeitório da JS Contadores." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a70a1e85-3418-4af2-917e-7fd491fe56ea/id-preview-3f2ce80b--e0a1e12f-4c6e-45e2-8d94-8da196e9e5d1.lovable.app-1778768318947.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a70a1e85-3418-4af2-917e-7fd491fe56ea/id-preview-3f2ce80b--e0a1e12f-4c6e-45e2-8d94-8da196e9e5d1.lovable.app-1778768318947.png" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:card", content: "summary" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

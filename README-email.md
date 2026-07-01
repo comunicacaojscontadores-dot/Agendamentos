@@ -37,7 +37,7 @@ Agora o código lê de **variáveis de ambiente** em tempo de execução via `pr
 2. Preencha os valores reais em `.dev.vars`.
 3. O Wrangler lê `.dev.vars` automaticamente em `wrangler dev`.
 
-### Produção (Cloudflare Workers via GitHub + Resend/CI)
+### Produção (Cloudflare Workers via GitHub)
 
 Adicione os secrets no painel da Cloudflare:
 
@@ -50,11 +50,12 @@ wrangler secret put PUBLIC_BASE_URL
 
 Ou via **Cloudflare Dashboard** → Workers & Pages → seu worker → Settings → Variables and Secrets.
 
-### Neon (banco de dados)
+### Banco de dados (Supabase)
 
-Substitua as variáveis do Supabase pelas do Neon em `.dev.vars` e nos secrets do Cloudflare:
-- `SUPABASE_URL` → URL de conexão do Neon
-- `SUPABASE_SERVICE_ROLE_KEY` → credencial do Neon
+O banco é o **Supabase**. As variáveis abaixo ficam como secrets no Cloudflare e apontam para o projeto atual:
+- `SUPABASE_URL` — URL do projeto Supabase
+- `SUPABASE_PUBLISHABLE_KEY` — chave anon (pública)
+- `SUPABASE_SERVICE_ROLE_KEY` — chave service_role (secreta; usada só no servidor)
 
 ---
 
