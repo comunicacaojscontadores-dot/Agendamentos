@@ -2,9 +2,11 @@ import { createFileRoute, Link, Outlet, useNavigate, useLocation } from "@tansta
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useIdleLogout } from "@/hooks/useIdleLogout";
 import { Building2, Calendar, DoorOpen, LogOut, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
 
@@ -13,6 +15,12 @@ function AdminLayout() {
   const navigate = useNavigate();
   const path = useLocation({ select: (l) => l.pathname });
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+
+  // Logout automático por inatividade (segurança). Só ativo quando há sessão.
+  useIdleLogout(!!session, () => {
+    toast("Sessão encerrada por inatividade. Faça login novamente.");
+    navigate({ to: "/admin/login" });
+  });
 
   useEffect(() => {
     if (loading) return;

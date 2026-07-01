@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Building2, Loader2 } from "lucide-react";
 import { Turnstile } from "@/components/Turnstile";
+import { markActivity } from "@/hooks/useIdleLogout";
 import { toast } from "sonner";
 
 // Site key pública da proteção anti-robô (a mesma do agendamento).
@@ -39,6 +40,7 @@ function LoginPage() {
       setCaptchaKey((k) => k + 1);
       return;
     }
+    markActivity(); // zera o contador de inatividade ao entrar
     navigate({ to: "/admin" });
   };
 
