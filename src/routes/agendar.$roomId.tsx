@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Calendar as CalendarIcon, Clock, MapPin, Video, Check, Loader2, X } from "lucide-react";
-import { generateSlots, formatDuration, formatDateBR, formatTime, DAYS_PT_SHORT, type AvailabilityWindow, type BookedSlot } from "@/lib/booking-utils";
+import { generateSlots, formatDuration, formatDateBR, formatTime, fullDayRange, FULL_DAY_MIN, DAYS_PT_SHORT, type AvailabilityWindow, type BookedSlot } from "@/lib/booking-utils";
 import { createBooking } from "@/lib/booking.functions";
 import { Turnstile } from "@/components/Turnstile";
 import { toast } from "sonner";
@@ -55,10 +55,17 @@ function BookPage() {
     });
   }, [date, roomId, slot]);
 
+  const allDay = duration === FULL_DAY_MIN;
+
   const slots = useMemo(() => {
-    if (!date || !duration) return [];
+    if (!date || !duration || allDay) return [];
     return generateSlots(date, duration, availability, booked);
-  }, [date, duration, availability, booked]);
+  }, [date, duration, availability, booked, allDay]);
+
+  // No modo "dia inteiro", qualquer reserva existente no dia impede ocupar o dia todo.
+  const dayConflict = allDay && slot
+    ? booked.some((b) => new Date(b.starts_at) < slot.end && new Date(b.ends_at) > slot.start)
+    : false;
 
   if (!room) {
     return <div className="min-h-screen bg-background"><SiteHeader /><div className="p-12 text-center text-muted-foreground">Carregando…</div></div>;
@@ -78,6 +85,7 @@ function BookPage() {
         guestEmails: guests,
         notes: notes || null,
         turnstileToken: captchaToken,
+        allDay,
       },
     });
     setSubmitting(false);
@@ -89,6 +97,7 @@ function BookPage() {
   const validForm =
     name.trim().length > 0 &&
     /\S+@\S+\.\S+/.test(email) &&
+    !dayConflict &&
     (!TURNSTILE_SITE_KEY || captchaToken.length > 0);
 
   return (
@@ -109,7 +118,7 @@ function BookPage() {
         </div>
 
         <Card className="p-5 mb-6 bg-surface shadow-soft">
-          <Stepper step={step} />
+          <Stepper step={step} allDay={allDay} />
         </Card>
 
         {step === 1 && (
@@ -143,7 +152,17 @@ function BookPage() {
             <DatePicker
               availableDays={[...new Set(availability.map(a => a.day_of_week))]}
               selected={date}
-              onSelect={(d) => { setDate(d); setSlot(null); setStep(3); }}
+              onSelect={(d) => {
+                setDate(d);
+                if (allDay) {
+                  // Dia inteiro: já define o intervalo (janela do dia) e pula a etapa de horário.
+                  setSlot(fullDayRange(d, availability));
+                  setStep(4);
+                } else {
+                  setSlot(null);
+                  setStep(3);
+                }
+              }}
             />
             <div className="mt-6 flex justify-between">
               <Button variant="ghost" onClick={() => setStep(1)}><ArrowLeft className="size-4" />Voltar</Button>
@@ -190,8 +209,16 @@ function BookPage() {
           <Card className="p-6 bg-surface shadow-soft">
             <h2 className="font-display font-bold text-xl mb-1">Seus dados</h2>
             <p className="text-sm text-muted-foreground mb-5">
-              Reservando <strong className="text-foreground">{formatDateBR(slot.start)}</strong> das <strong className="text-foreground">{formatTime(slot.start)}</strong> às <strong className="text-foreground">{formatTime(slot.end)}</strong>.
+              Reservando <strong className="text-foreground">{formatDateBR(slot.start)}</strong>
+              {allDay
+                ? <> — <strong className="text-foreground">dia inteiro</strong> ({formatTime(slot.start)} às {formatTime(slot.end)}).</>
+                : <> das <strong className="text-foreground">{formatTime(slot.start)}</strong> às <strong className="text-foreground">{formatTime(slot.end)}</strong>.</>}
             </p>
+            {dayConflict && (
+              <div className="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-sm p-3">
+                Este dia já possui outra reserva, então não é possível agendar o dia inteiro. Escolha outra data ou uma duração específica.
+              </div>
+            )}
             <div className="space-y-4">
               <div>
                 <Label htmlFor="name">Seu nome *</Label>
@@ -217,7 +244,7 @@ function BookPage() {
               </div>
             )}
             <div className="mt-6 flex justify-between">
-              <Button variant="ghost" onClick={() => setStep(3)} disabled={submitting}><ArrowLeft className="size-4" />Voltar</Button>
+              <Button variant="ghost" onClick={() => setStep(allDay ? 2 : 3)} disabled={submitting}><ArrowLeft className="size-4" />Voltar</Button>
               <Button onClick={handleSubmit} disabled={!validForm || submitting} size="lg">
                 {submitting ? <><Loader2 className="size-4 animate-spin" /> Agendando…</> : <>Agendar <ArrowRight className="size-4" /></>}
               </Button>
@@ -229,14 +256,16 @@ function BookPage() {
   );
 }
 
-function Stepper({ step }: { step: 1 | 2 | 3 | 4 }) {
-  const labels = ["Duração", "Data", "Horário", "Dados"];
+function Stepper({ step, allDay }: { step: 1 | 2 | 3 | 4; allDay?: boolean }) {
+  // No modo "dia inteiro" não há etapa de horário.
+  const labels = allDay ? ["Duração", "Data", "Dados"] : ["Duração", "Data", "Horário", "Dados"];
+  const cur = allDay && step === 4 ? 3 : step;
   return (
     <div className="flex items-center gap-2">
       {labels.map((l, i) => {
         const n = i + 1;
-        const done = n < step;
-        const active = n === step;
+        const done = n < cur;
+        const active = n === cur;
         return (
           <div key={l} className="flex items-center gap-2 flex-1">
             <div className={cn(

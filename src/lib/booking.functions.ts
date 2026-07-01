@@ -12,6 +12,7 @@ const createSchema = z.object({
   guestEmails: z.array(z.string().trim().email().max(255)).max(20).default([]),
   notes: z.string().trim().max(2000).optional().nullable(),
   turnstileToken: z.string().max(2048).optional().default(""),
+  allDay: z.boolean().optional().default(false),
 });
 
 // Verifica o token anti-robô (Turnstile) com a Cloudflare.
@@ -80,11 +81,28 @@ export const createBooking = createServerFn({ method: "POST" })
     const startMin = hour * 60 + minute;
     const durMin = Math.round((end.getTime() - start.getTime()) / 60_000);
     const endMin = startMin + durMin;
-    const fitsWindow = (avail ?? []).filter((w) => w.day_of_week === dow).some((w) => {
-      const [sh, sm] = w.start_time.split(":").map(Number);
-      const [eh, em] = w.end_time.split(":").map(Number);
-      return startMin >= sh * 60 + sm && endMin <= eh * 60 + em;
-    });
+    const windowsToday = (avail ?? []).filter((w) => w.day_of_week === dow);
+
+    let fitsWindow: boolean;
+    if (data.allDay) {
+      // Dia inteiro: precisa cobrir exatamente do início da primeira janela ao
+      // fim da última janela do dia (a regra das reservas normais fica intacta).
+      let minStart = Infinity;
+      let maxEnd = -Infinity;
+      for (const w of windowsToday) {
+        const [sh, sm] = w.start_time.split(":").map(Number);
+        const [eh, em] = w.end_time.split(":").map(Number);
+        minStart = Math.min(minStart, sh * 60 + sm);
+        maxEnd = Math.max(maxEnd, eh * 60 + em);
+      }
+      fitsWindow = windowsToday.length > 0 && startMin === minStart && endMin === maxEnd;
+    } else {
+      fitsWindow = windowsToday.some((w) => {
+        const [sh, sm] = w.start_time.split(":").map(Number);
+        const [eh, em] = w.end_time.split(":").map(Number);
+        return startMin >= sh * 60 + sm && endMin <= eh * 60 + em;
+      });
+    }
     if (!fitsWindow) return { ok: false as const, error: "Horário fora da disponibilidade da sala." };
 
     const dayStart = new Date(start); dayStart.setHours(0, 0, 0, 0);

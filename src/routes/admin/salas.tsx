@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, MapPin, Video, Clock, Calendar as CalendarIcon, DoorOpen } from "lucide-react";
-import { DAYS_PT, DAYS_PT_SHORT, formatDuration } from "@/lib/booking-utils";
+import { DAYS_PT, DAYS_PT_SHORT, formatDuration, FULL_DAY_MIN } from "@/lib/booking-utils";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { toast } from "sonner";
 
@@ -23,7 +23,7 @@ interface Room {
 }
 interface Avail { id: string; room_id: string; day_of_week: number; start_time: string; end_time: string; }
 
-const DURATIONS = [15, 30, 45, 60, 90, 120];
+const DURATIONS = [15, 30, 45, 60, 90, 120, FULL_DAY_MIN];
 
 function AdminRooms() {
   const [rooms, setRooms] = useState<Room[]>([]);
