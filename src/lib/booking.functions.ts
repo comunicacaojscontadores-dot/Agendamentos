@@ -95,7 +95,9 @@ export const createBooking = createServerFn({ method: "POST" })
         minStart = Math.min(minStart, sh * 60 + sm);
         maxEnd = Math.max(maxEnd, eh * 60 + em);
       }
-      fitsWindow = windowsToday.length > 0 && startMin === minStart && endMin === maxEnd;
+      // Dia inteiro vai até o fim da disponibilidade; o início pode ser a
+      // abertura OU, se for hoje e já tiver passado, o horário atual.
+      fitsWindow = windowsToday.length > 0 && startMin >= minStart && endMin === maxEnd;
     } else {
       fitsWindow = windowsToday.some((w) => {
         const [sh, sm] = w.start_time.split(":").map(Number);

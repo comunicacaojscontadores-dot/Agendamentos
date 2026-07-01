@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Calendar as CalendarIcon, Clock, MapPin, Video, Check, Loader2, X } from "lucide-react";
-import { generateSlots, formatDuration, formatDateBR, formatTime, fullDayRange, FULL_DAY_MIN, DAYS_PT_SHORT, type AvailabilityWindow, type BookedSlot } from "@/lib/booking-utils";
+import { generateSlots, formatDuration, formatDateBR, formatTime, fullDayRange, FULL_DAY_MIN, BOOKING_BUFFER_MIN, DAYS_PT_SHORT, type AvailabilityWindow, type BookedSlot } from "@/lib/booking-utils";
 import { createBooking } from "@/lib/booking.functions";
 import { Turnstile } from "@/components/Turnstile";
 import { toast } from "sonner";
@@ -62,9 +62,15 @@ function BookPage() {
     return generateSlots(date, duration, availability, booked);
   }, [date, duration, availability, booked, allDay]);
 
-  // No modo "dia inteiro", qualquer reserva existente no dia impede ocupar o dia todo.
+  // No modo "dia inteiro", qualquer reserva que caia dentro do intervalo (com o
+  // mesmo intervalo de segurança do servidor) impede ocupar o restante do dia.
   const dayConflict = allDay && slot
-    ? booked.some((b) => new Date(b.starts_at) < slot.end && new Date(b.ends_at) > slot.start)
+    ? booked.some((b) => {
+        const bufMs = BOOKING_BUFFER_MIN * 60_000;
+        const bs = new Date(b.starts_at).getTime() - bufMs;
+        const be = new Date(b.ends_at).getTime() + bufMs;
+        return slot.start.getTime() < be && slot.end.getTime() > bs;
+      })
     : false;
 
   if (!room) {
@@ -156,7 +162,13 @@ function BookPage() {
                 setDate(d);
                 if (allDay) {
                   // Dia inteiro: já define o intervalo (janela do dia) e pula a etapa de horário.
-                  setSlot(fullDayRange(d, availability));
+                  const range = fullDayRange(d, availability);
+                  if (!range) {
+                    setSlot(null);
+                    toast.error("Não há mais tempo disponível hoje para o dia inteiro. Escolha outra data.");
+                    return;
+                  }
+                  setSlot(range);
                   setStep(4);
                 } else {
                   setSlot(null);

@@ -38,7 +38,11 @@ export interface BookedSlot { starts_at: string; ends_at: string; }
 /**
  * Intervalo de "dia inteiro" para uma data: do começo da primeira janela de
  * disponibilidade ao fim da última janela daquele dia da semana.
- * Retorna null se não houver disponibilidade no dia.
+ *
+ * Se for HOJE e a abertura já tiver passado, o início passa a ser o horário
+ * atual (arredondado para o próximo múltiplo de 15 min), até o fim do dia —
+ * assim não conflita com reservas anteriores do mesmo dia que já ocorreram.
+ * Retorna null se não houver disponibilidade no dia ou se o dia já encerrou.
  */
 export function fullDayRange(date: Date, availability: AvailabilityWindow[]): { start: Date; end: Date } | null {
   const dow = date.getDay();
@@ -54,6 +58,16 @@ export function fullDayRange(date: Date, availability: AvailabilityWindow[]): { 
   }
   const start = new Date(date); start.setHours(Math.floor(minStart / 60), minStart % 60, 0, 0);
   const end = new Date(date); end.setHours(Math.floor(maxEnd / 60), maxEnd % 60, 0, 0);
+
+  const now = new Date();
+  if (start < now) {
+    const next = new Date(now);
+    next.setSeconds(0, 0);
+    next.setMinutes(next.getMinutes() + (15 - (next.getMinutes() % 15))); // próximo múltiplo de 15 min
+    if (next > start) start.setTime(next.getTime());
+  }
+  if (start >= end) return null; // não há mais tempo disponível hoje
+
   return { start, end };
 }
 
