@@ -34,7 +34,16 @@ function LoginPage() {
     });
     setLoading(false);
     if (error) {
-      toast.error("E-mail ou senha incorretos");
+      // A mensagem antes era sempre "senha incorreta", o que escondia falhas do
+      // anti-robô (CAPTCHA) e bloqueios por excesso de tentativas. Agora distingue.
+      const m = (error.message || "").toLowerCase();
+      if (m.includes("captcha")) {
+        toast.error("Falha na verificação anti-robô. Recarregue a página (Ctrl+Shift+R) e tente de novo.");
+      } else if (error.status === 429 || m.includes("rate limit") || m.includes("too many")) {
+        toast.error("Muitas tentativas seguidas. Aguarde alguns minutos e tente novamente.");
+      } else {
+        toast.error("E-mail ou senha incorretos.");
+      }
       // O token do Turnstile é de uso único — gera um novo desafio p/ tentar de novo.
       setCaptchaToken("");
       setCaptchaKey((k) => k + 1);
