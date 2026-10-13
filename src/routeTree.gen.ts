@@ -18,6 +18,7 @@ import { Route as AgendarRoomIdRouteImport } from './routes/agendar.$roomId'
 import { Route as AdminSalasRouteImport } from './routes/admin/salas'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminAdministradoresRouteImport } from './routes/admin/administradores'
+import { Route as ApiPublicReservasRouteImport } from './routes/api/public/reservas'
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
 
 const SucessoRoute = SucessoRouteImport.update({
@@ -65,6 +66,11 @@ const AdminAdministradoresRoute = AdminAdministradoresRouteImport.update({
   path: '/administradores',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiPublicReservasRoute = ApiPublicReservasRouteImport.update({
+  id: '/api/public/reservas',
+  path: '/api/public/reservas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksSendRemindersRoute =
   ApiPublicHooksSendRemindersRouteImport.update({
     id: '/api/public/hooks/send-reminders',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/admin/salas': typeof AdminSalasRoute
   '/agendar/$roomId': typeof AgendarRoomIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/public/reservas': typeof ApiPublicReservasRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
 }
 export interface FileRoutesByTo {
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/admin/salas': typeof AdminSalasRoute
   '/agendar/$roomId': typeof AgendarRoomIdRoute
   '/admin': typeof AdminIndexRoute
+  '/api/public/reservas': typeof ApiPublicReservasRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
 }
 export interface FileRoutesById {
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/admin/salas': typeof AdminSalasRoute
   '/agendar/$roomId': typeof AgendarRoomIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/public/reservas': typeof ApiPublicReservasRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
 }
 export interface FileRouteTypes {
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/admin/salas'
     | '/agendar/$roomId'
     | '/admin/'
+    | '/api/public/reservas'
     | '/api/public/hooks/send-reminders'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/admin/salas'
     | '/agendar/$roomId'
     | '/admin'
+    | '/api/public/reservas'
     | '/api/public/hooks/send-reminders'
   id:
     | '__root__'
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/admin/salas'
     | '/agendar/$roomId'
     | '/admin/'
+    | '/api/public/reservas'
     | '/api/public/hooks/send-reminders'
   fileRoutesById: FileRoutesById
 }
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   CancelarRoute: typeof CancelarRoute
   SucessoRoute: typeof SucessoRoute
   AgendarRoomIdRoute: typeof AgendarRoomIdRoute
+  ApiPublicReservasRoute: typeof ApiPublicReservasRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
 }
 
@@ -220,6 +233,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdministradoresRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/public/reservas': {
+      id: '/api/public/reservas'
+      path: '/api/public/reservas'
+      fullPath: '/api/public/reservas'
+      preLoaderRoute: typeof ApiPublicReservasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/send-reminders': {
       id: '/api/public/hooks/send-reminders'
       path: '/api/public/hooks/send-reminders'
@@ -252,6 +272,7 @@ const rootRouteChildren: RootRouteChildren = {
   CancelarRoute: CancelarRoute,
   SucessoRoute: SucessoRoute,
   AgendarRoomIdRoute: AgendarRoomIdRoute,
+  ApiPublicReservasRoute: ApiPublicReservasRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,
 }
 export const routeTree = rootRouteImport
