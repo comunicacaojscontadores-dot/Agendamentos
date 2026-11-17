@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { XCircle, AlertCircle, CheckCircle2 } from "lucide-react";
-import { formatDateBR, formatTime } from "@/lib/booking-utils";
+import { formatDateBR, formatTime, formatTimeRange } from "@/lib/booking-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/cancelar")({
@@ -65,7 +65,7 @@ function CancelPage() {
               <div className="mt-5 p-4 rounded-lg bg-primary-soft">
                 <div className="font-semibold">{info.room_name ?? `Sala ${info.room_number}`}</div>
                 <div className="text-sm text-muted-foreground">{formatDateBR(new Date(info.starts_at))}</div>
-                <div className="text-sm text-muted-foreground">{formatTime(new Date(info.starts_at))} – {formatTime(new Date(info.ends_at))}</div>
+                <div className="text-sm text-muted-foreground">{formatTimeRange(new Date(info.starts_at), new Date(info.ends_at))}</div>
                 <div className="text-sm mt-2">Solicitado por <strong>{info.user_name}</strong></div>
               </div>
               <div className="mt-6 flex gap-3 justify-center">

@@ -159,7 +159,11 @@ returns table (starts_at timestamptz, ends_at timestamptz)
 language sql stable security definer set search_path = public as $$
   select b.starts_at, b.ends_at
   from public.bookings b
-  where b.room_id = _room_id and b.status = 'active' and b.starts_at::date = _date;
+  where b.room_id = _room_id and b.status = 'active'
+    -- reservas que ocupam qualquer parte do dia (fuso de Brasília), inclusive
+    -- as de vários dias que começaram antes (opção "2 dias")
+    and b.starts_at < ((_date + 1)::timestamp at time zone 'America/Sao_Paulo')
+    and b.ends_at > (_date::timestamp at time zone 'America/Sao_Paulo');
 $$;
 
 grant execute on function public.get_booked_slots(uuid, date) to anon, authenticated;

@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Calendar } from "lucide-react";
-import { formatDateBR, formatTime } from "@/lib/booking-utils";
+import { formatDateBR, formatTime, formatTimeRange } from "@/lib/booking-utils";
 
 export const Route = createFileRoute("/sucesso")({
   validateSearch: z.object({ token: z.string().uuid() }),
@@ -39,7 +39,7 @@ function SuccessPage() {
               <div className="font-semibold">{info.room_name ?? `Sala ${info.room_number}`}</div>
               <div className="text-sm text-muted-foreground flex items-center gap-1.5">
                 <Calendar className="size-3.5" />
-                {formatDateBR(new Date(info.starts_at))} · {formatTime(new Date(info.starts_at))} – {formatTime(new Date(info.ends_at))}
+                {formatDateBR(new Date(info.starts_at))} · {formatTimeRange(new Date(info.starts_at), new Date(info.ends_at))}
               </div>
             </div>
           )}

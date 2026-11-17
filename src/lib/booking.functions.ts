@@ -13,6 +13,7 @@ const createSchema = z.object({
   notes: z.string().trim().max(2000).optional().nullable(),
   turnstileToken: z.string().max(2048).optional().default(""),
   allDay: z.boolean().optional().default(false),
+  twoDays: z.boolean().optional().default(false),
 });
 
 // Verifica o token anti-robô (Turnstile) com a Cloudflare.
@@ -50,6 +51,28 @@ function getBRParts(d: Date) {
   return { dow: dowMap[map.weekday], hour: Number(map.hour) % 24, minute: Number(map.minute) };
 }
 
+// Data (AAAA-MM-DD) no fuso de Brasília, para contar diferença de dias.
+function brDateMs(d: Date) {
+  const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(d);
+  return Date.parse(`${ymd}T00:00:00Z`);
+}
+
+type Window = { day_of_week: number; start_time: string; end_time: string };
+
+// Primeiro início e último fim das janelas de um dia da semana.
+function dayBounds(avail: Window[], dow: number) {
+  const ws = avail.filter((w) => w.day_of_week === dow);
+  let minStart = Infinity;
+  let maxEnd = -Infinity;
+  for (const w of ws) {
+    const [sh, sm] = w.start_time.split(":").map(Number);
+    const [eh, em] = w.end_time.split(":").map(Number);
+    minStart = Math.min(minStart, sh * 60 + sm);
+    maxEnd = Math.max(maxEnd, eh * 60 + em);
+  }
+  return ws.length ? { minStart, maxEnd } : null;
+}
+
 const BUFFER_MIN = 15;
 
 export const createBooking = createServerFn({ method: "POST" })
@@ -84,7 +107,19 @@ export const createBooking = createServerFn({ method: "POST" })
     const windowsToday = (avail ?? []).filter((w) => w.day_of_week === dow);
 
     let fitsWindow: boolean;
-    if (data.allDay) {
+    if (data.twoDays) {
+      // 2 dias: começa como "dia inteiro" no dia do início e termina no fim da
+      // disponibilidade do PRÓXIMO dia que tiver janela (ex.: sexta → segunda).
+      const first = dayBounds(avail ?? [], dow);
+      let k = 1;
+      while (k <= 7 && !dayBounds(avail ?? [], (dow + k) % 7)) k++;
+      const second = k <= 7 ? dayBounds(avail ?? [], (dow + k) % 7) : null;
+      const endParts = getBRParts(end);
+      const dayDiff = Math.round((brDateMs(end) - brDateMs(start)) / 86_400_000);
+      fitsWindow = !!first && !!second &&
+        startMin >= first.minStart && startMin < first.maxEnd &&
+        dayDiff === k && endParts.hour * 60 + endParts.minute === second.maxEnd;
+    } else if (data.allDay) {
       // Dia inteiro: precisa cobrir exatamente do início da primeira janela ao
       // fim da última janela do dia (a regra das reservas normais fica intacta).
       let minStart = Infinity;
@@ -107,17 +142,17 @@ export const createBooking = createServerFn({ method: "POST" })
     }
     if (!fitsWindow) return { ok: false as const, error: "Horário fora da disponibilidade da sala." };
 
-    const dayStart = new Date(start); dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(start); dayEnd.setHours(23, 59, 59, 999);
-    const { data: sameDay } = await supabaseAdmin
+    // Reservas ativas que encostam no intervalo (com a folga de 15 min) — vale
+    // também para reservas de vários dias que começaram antes.
+    const bufferMs = BUFFER_MIN * 60_000;
+    const { data: nearby } = await supabaseAdmin
       .from("bookings")
       .select("starts_at, ends_at")
       .eq("room_id", data.roomId)
       .eq("status", "active")
-      .gte("starts_at", dayStart.toISOString())
-      .lte("starts_at", dayEnd.toISOString());
-    const bufferMs = BUFFER_MIN * 60_000;
-    const conflicts = (sameDay ?? []).some((b) => {
+      .lt("starts_at", new Date(end.getTime() + bufferMs).toISOString())
+      .gt("ends_at", new Date(start.getTime() - bufferMs).toISOString());
+    const conflicts = (nearby ?? []).some((b) => {
       const bs = new Date(b.starts_at).getTime() - bufferMs;
       const be = new Date(b.ends_at).getTime() + bufferMs;
       return start.getTime() < be && end.getTime() > bs;

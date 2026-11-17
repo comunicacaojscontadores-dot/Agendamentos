@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Calendar as CalendarIcon, Clock, MapPin, Video, Check, Loader2, X } from "lucide-react";
-import { generateSlots, formatDuration, formatDateBR, formatTime, fullDayRange, FULL_DAY_MIN, BOOKING_BUFFER_MIN, DAYS_PT_SHORT, type AvailabilityWindow, type BookedSlot } from "@/lib/booking-utils";
+import { generateSlots, formatDuration, formatDateBR, formatTime, fullDayRange, twoDayRange, isWholeDays, TWO_DAYS_MIN, BOOKING_BUFFER_MIN, DAYS_PT_SHORT, type AvailabilityWindow, type BookedSlot } from "@/lib/booking-utils";
 import { createBooking } from "@/lib/booking.functions";
 import { Turnstile } from "@/components/Turnstile";
 import { toast } from "sonner";
@@ -47,15 +47,26 @@ function BookPage() {
     supabase.from("room_availability").select("day_of_week, start_time, end_time").eq("room_id", roomId).then(({ data }) => setAvailability((data ?? []) as AvailabilityWindow[]));
   }, [roomId]);
 
+  // Reservas já existentes no(s) dia(s) envolvido(s). Para "2 dias", consulta
+  // também os dias seguintes até o fim do intervalo.
   useEffect(() => {
     if (!date) return;
-    const d = date.toISOString().slice(0, 10);
-    supabase.rpc("get_booked_slots", { _room_id: roomId, _date: d }).then(({ data }) => {
-      setBooked((data ?? []) as BookedSlot[]);
+    const days = [date];
+    if (slot && slot.end.toDateString() !== date.toDateString()) {
+      for (let d = new Date(date); d < slot.end; ) {
+        d = new Date(d); d.setDate(d.getDate() + 1);
+        if (d <= slot.end) days.push(d);
+      }
+    }
+    const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    Promise.all(days.map((d) => supabase.rpc("get_booked_slots", { _room_id: roomId, _date: ymd(d) }))).then((results) => {
+      setBooked(results.flatMap(({ data }) => (data ?? []) as BookedSlot[]));
     });
   }, [date, roomId, slot]);
 
-  const allDay = duration === FULL_DAY_MIN;
+  // "Dia inteiro" e "2 dias" ocupam dias completos e pulam a etapa de horário.
+  const allDay = isWholeDays(duration);
+  const twoDays = duration === TWO_DAYS_MIN;
 
   const slots = useMemo(() => {
     if (!date || !duration || allDay) return [];
@@ -91,7 +102,8 @@ function BookPage() {
         guestEmails: guests,
         notes: notes || null,
         turnstileToken: captchaToken,
-        allDay,
+        allDay: allDay && !twoDays,
+        twoDays,
       },
     });
     setSubmitting(false);
@@ -161,11 +173,13 @@ function BookPage() {
               onSelect={(d) => {
                 setDate(d);
                 if (allDay) {
-                  // Dia inteiro: já define o intervalo (janela do dia) e pula a etapa de horário.
-                  const range = fullDayRange(d, availability);
+                  // Dia inteiro / 2 dias: já define o intervalo e pula a etapa de horário.
+                  const range = twoDays ? twoDayRange(d, availability) : fullDayRange(d, availability);
                   if (!range) {
                     setSlot(null);
-                    toast.error("Não há mais tempo disponível hoje para o dia inteiro. Escolha outra data.");
+                    toast.error(twoDays
+                      ? "Não é possível reservar 2 dias a partir desta data. Escolha outra data."
+                      : "Não há mais tempo disponível hoje para o dia inteiro. Escolha outra data.");
                     return;
                   }
                   setSlot(range);
@@ -221,14 +235,18 @@ function BookPage() {
           <Card className="p-6 bg-surface shadow-soft">
             <h2 className="font-display font-bold text-xl mb-1">Seus dados</h2>
             <p className="text-sm text-muted-foreground mb-5">
-              Reservando <strong className="text-foreground">{formatDateBR(slot.start)}</strong>
+              {twoDays
+                ? <>Reservando <strong className="text-foreground">2 dias</strong>: de <strong className="text-foreground">{formatDateBR(slot.start)}</strong> às {formatTime(slot.start)} até <strong className="text-foreground">{formatDateBR(slot.end)}</strong> às {formatTime(slot.end)}.</>
+                : <>Reservando <strong className="text-foreground">{formatDateBR(slot.start)}</strong>
               {allDay
                 ? <> — <strong className="text-foreground">dia inteiro</strong> ({formatTime(slot.start)} às {formatTime(slot.end)}).</>
-                : <> das <strong className="text-foreground">{formatTime(slot.start)}</strong> às <strong className="text-foreground">{formatTime(slot.end)}</strong>.</>}
+                : <> das <strong className="text-foreground">{formatTime(slot.start)}</strong> às <strong className="text-foreground">{formatTime(slot.end)}</strong>.</>}</>}
             </p>
             {dayConflict && (
               <div className="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-sm p-3">
-                Este dia já possui outra reserva, então não é possível agendar o dia inteiro. Escolha outra data ou uma duração específica.
+                {twoDays
+                  ? "Já existe outra reserva nesse período, então não é possível agendar os 2 dias. Escolha outra data ou uma duração específica."
+                  : "Este dia já possui outra reserva, então não é possível agendar o dia inteiro. Escolha outra data ou uma duração específica."}
               </div>
             )}
             <div className="space-y-4">

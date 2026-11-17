@@ -6,8 +6,18 @@ export const DAYS_PT_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 // do dia (ex.: 08:00–17:00). Usa-se fullDayRange() para calcular o intervalo.
 export const FULL_DAY_MIN = 1440;
 
+// Valor-sentinela da opção "2 dias": o dia escolhido inteiro + o próximo dia
+// com disponibilidade inteiro (ex.: sexta → segunda). Usa-se twoDayRange().
+export const TWO_DAYS_MIN = 2880;
+
+/** Durações que não escolhem horário (ocupam dias inteiros). */
+export function isWholeDays(min: number | null) {
+  return min === FULL_DAY_MIN || min === TWO_DAYS_MIN;
+}
+
 export function formatDuration(min: number) {
   if (min === FULL_DAY_MIN) return "Dia inteiro";
+  if (min === TWO_DAYS_MIN) return "2 dias";
   if (min < 60) return `${min} min`;
   const h = min / 60;
   return h % 1 === 0 ? `${h}h` : `${Math.floor(h)}h${(min % 60)}`;
@@ -26,6 +36,13 @@ export function formatDateBR(d: Date) {
 
 export function formatTime(d: Date) {
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+/** "09:00 – 10:00" no mesmo dia; "08:00 – qua, 19/11 17:00" quando termina em outro dia. */
+export function formatTimeRange(start: Date, end: Date) {
+  if (start.toDateString() === end.toDateString()) return `${formatTime(start)} – ${formatTime(end)}`;
+  const day = end.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" }).replace(".", "");
+  return `${formatTime(start)} – ${day} ${formatTime(end)}`;
 }
 
 export interface AvailabilityWindow {
@@ -69,6 +86,22 @@ export function fullDayRange(date: Date, availability: AvailabilityWindow[]): { 
   if (start >= end) return null; // não há mais tempo disponível hoje
 
   return { start, end };
+}
+
+/**
+ * Intervalo de "2 dias": começa como o "dia inteiro" da data escolhida e vai
+ * até o fim do PRÓXIMO dia que tenha disponibilidade (pula fim de semana, por
+ * exemplo, se ele não estiver liberado). Retorna null se não for possível.
+ */
+export function twoDayRange(date: Date, availability: AvailabilityWindow[]): { start: Date; end: Date } | null {
+  const first = fullDayRange(date, availability);
+  if (!first) return null;
+  for (let k = 1; k <= 7; k++) {
+    const next = new Date(date); next.setDate(date.getDate() + k);
+    const second = fullDayRange(next, availability);
+    if (second) return { start: first.start, end: second.end };
+  }
+  return null;
 }
 
 /** Generate slots for a date based on availability + duration, excluding booked ones. */

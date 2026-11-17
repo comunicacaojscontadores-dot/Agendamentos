@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Ban, Building2, Calendar, CalendarClock, CalendarDays, CheckCircle2, Clock, Mail, MapPin, Search, Users } from "lucide-react";
-import { formatDateBR, formatTime } from "@/lib/booking-utils";
+import { formatDateBR, formatTime, formatTimeRange } from "@/lib/booking-utils";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
 export const Route = createFileRoute("/admin/")({ component: AdminBookings });
@@ -212,7 +212,7 @@ function BookingCard({ b, tone, onCancel, cancellingId }: { b: any; tone: Tone; 
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-display font-bold flex items-center gap-1.5"><Calendar className="size-4 text-primary" /> {formatDateBR(new Date(b.starts_at))}</span>
-            <span className="text-sm text-muted-foreground flex items-center gap-1.5"><Clock className="size-3.5" /> {formatTime(new Date(b.starts_at))} – {formatTime(new Date(b.ends_at))}</span>
+            <span className="text-sm text-muted-foreground flex items-center gap-1.5"><Clock className="size-3.5" /> {formatTimeRange(new Date(b.starts_at), new Date(b.ends_at))}</span>
             {isCancelled && <Badge variant="destructive">Cancelado</Badge>}
           </div>
         </div>
