@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Video, ArrowRight, Calendar, CalendarDays, DoorOpen } from "lucide-react";
+import { MapPin, Video, ArrowRight, Calendar, CalendarDays, DoorOpen, Car } from "lucide-react";
+import { isVehicle, numberLabel } from "@/lib/booking-utils";
 
 export const Route = createFileRoute("/")({ component: HomePage });
 
@@ -16,6 +17,7 @@ interface Room {
   video_call: boolean;
   available_durations: number[];
   active: boolean;
+  kind?: string | null;
 }
 
 function HomePage() {
@@ -40,7 +42,7 @@ function HomePage() {
               Reserve uma sala em <span className="text-blue-200">poucos cliques</span>
             </h1>
             <p className="text-primary-foreground/80 text-lg">
-              Selecione abaixo a sala que deseja agendar. Você escolhe a duração, o dia e o horário disponíveis.
+              Selecione abaixo a sala{rooms?.some(isVehicle) ? " ou o veículo" : ""} que deseja agendar. Você escolhe a duração, o dia e o horário disponíveis.
             </p>
           </div>
         </section>
@@ -48,7 +50,7 @@ function HomePage() {
         <section>
           <div className="flex items-center gap-2 mb-4">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Salas disponíveis
+              {rooms?.some(isVehicle) ? "Salas e veículos disponíveis" : "Salas disponíveis"}
             </h2>
             {rooms && rooms.length > 0 && (
               <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5 font-medium">{rooms.length}</span>
@@ -77,11 +79,11 @@ function HomePage() {
                   <Card className="p-6 h-full shadow-soft hover:shadow-elevated hover:-translate-y-1 hover:border-secondary/40 transition-all duration-200 bg-surface flex flex-col">
                     <div className="flex items-start justify-between mb-4">
                       <div className="min-w-0">
-                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Sala {r.room_number}
+                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                          {isVehicle(r) && <Car className="size-3.5" />}{numberLabel(r)}
                         </div>
                         <div className="font-display font-bold text-lg text-foreground mt-0.5">
-                          {r.name ?? `Sala ${r.room_number}`}
+                          {r.name ?? numberLabel(r)}
                         </div>
                       </div>
                       <div className="size-9 rounded-lg bg-primary-soft text-primary grid place-items-center shrink-0 group-hover:bg-secondary group-hover:text-secondary-foreground group-hover:translate-x-0.5 transition-all">

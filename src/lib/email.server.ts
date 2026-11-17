@@ -16,6 +16,7 @@ interface BaseArgs {
   userName: string;
   recipients: string[];
   notes: string | null;
+  vehicle?: boolean; // reserva de veículo (ex.: o carro) — muda só os textos
 }
 
 function fmt(d: Date) {
@@ -63,7 +64,7 @@ function buildHtml(args: BaseArgs, cancelUrl: string | null, opts: { title: stri
               </tr>
               <tr>
                 <td style="padding:10px 0;border-bottom:1px solid #f0f0f0">
-                  <span style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.5px">Sala</span><br>
+                  <span style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.5px">${args.vehicle ? "Veículo" : "Sala"}</span><br>
                   <span style="font-size:15px;color:#1a1a2e;font-weight:600">${args.roomLabel}</span>
                 </td>
               </tr>
@@ -96,7 +97,7 @@ function buildHtml(args: BaseArgs, cancelUrl: string | null, opts: { title: stri
           <td style="padding:0 40px 28px;text-align:center">
             <a href="${cancelUrl}"
                style="display:inline-block;background:#dc2626;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:15px">
-              Cancelar reunião
+              ${args.vehicle ? "Cancelar reserva" : "Cancelar reunião"}
             </a>
           </td>
         </tr>` : ""}

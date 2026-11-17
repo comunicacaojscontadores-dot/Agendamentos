@@ -6,6 +6,11 @@ export const DAYS_PT_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 // do dia (ex.: 08:00–17:00). Usa-se fullDayRange() para calcular o intervalo.
 export const FULL_DAY_MIN = 1440;
 
+// Valor-sentinela da opção "Até o fim do expediente": a pessoa escolhe o
+// início e a reserva vai até o fim da disponibilidade do dia. Fica abaixo de
+// FULL_DAY_MIN só para aparecer antes de "Dia inteiro" na lista.
+export const UNTIL_CLOSE_MIN = 1400;
+
 // Valor-sentinela da opção "2 dias": o dia escolhido inteiro + o próximo dia
 // com disponibilidade inteiro (ex.: sexta → segunda). Usa-se twoDayRange().
 export const TWO_DAYS_MIN = 2880;
@@ -16,11 +21,30 @@ export function isWholeDays(min: number | null) {
 }
 
 export function formatDuration(min: number) {
+  if (min === UNTIL_CLOSE_MIN) return "Até o fim do expediente";
   if (min === FULL_DAY_MIN) return "Dia inteiro";
   if (min === TWO_DAYS_MIN) return "2 dias";
   if (min < 60) return `${min} min`;
   const h = min / 60;
   return h % 1 === 0 ? `${h}h` : `${Math.floor(h)}h${(min % 60)}`;
+}
+
+// "Sala" comum ou "veículo" (ex.: o carro da empresa). Muda só os textos.
+export type RoomKind = "room" | "vehicle";
+interface Labeled { name?: string | null; room_number?: string | null; kind?: string | null }
+
+export function isVehicle(r?: Labeled | null) {
+  return r?.kind === "vehicle";
+}
+
+/** "Sala 3" ou "Placa ABC1D23". */
+export function numberLabel(r?: Labeled | null) {
+  return `${isVehicle(r) ? "Placa" : "Sala"} ${r?.room_number ?? ""}`.trim();
+}
+
+/** "Sala de Reunião 1 (Sala 3)" ou "Carro – Argo (Placa ABC1D23)". */
+export function roomLabel(r?: Labeled | null) {
+  return r?.name ? `${r.name} (${numberLabel(r)})` : numberLabel(r);
 }
 
 export function formatDateTime(d: Date) {
@@ -102,6 +126,44 @@ export function twoDayRange(date: Date, availability: AvailabilityWindow[]): { s
     if (second) return { start: first.start, end: second.end };
   }
   return null;
+}
+
+/**
+ * Horários de início para "Até o fim do expediente": qualquer início livre
+ * dentro das janelas do dia; o fim é sempre o fim da última janela do dia.
+ * Um início só aparece se o intervalo inteiro até o fechamento estiver livre.
+ */
+export function generateUntilCloseSlots(
+  date: Date,
+  availability: AvailabilityWindow[],
+  booked: BookedSlot[],
+  step = 15,
+): { start: Date; end: Date }[] {
+  const close = fullDayRange(date, availability)?.end; // fim da última janela do dia
+  const dow = date.getDay();
+  const windows = availability.filter((w) => w.day_of_week === dow);
+  if (!windows.length || !close) return [];
+
+  const slots: { start: Date; end: Date }[] = [];
+  const now = new Date();
+  const bufferMs = BOOKING_BUFFER_MIN * 60_000;
+
+  for (const w of windows) {
+    const [sh, sm] = w.start_time.split(":").map(Number);
+    const [eh, em] = w.end_time.split(":").map(Number);
+    const winStart = new Date(date); winStart.setHours(sh, sm, 0, 0);
+    const winEnd = new Date(date); winEnd.setHours(eh, em, 0, 0);
+    for (let cursor = new Date(winStart); cursor < winEnd; cursor = new Date(cursor.getTime() + step * 60_000)) {
+      if (cursor <= now) continue;
+      const overlaps = booked.some((b) => {
+        const bs = new Date(b.starts_at).getTime() - bufferMs;
+        const be = new Date(b.ends_at).getTime() + bufferMs;
+        return cursor.getTime() < be && close.getTime() > bs;
+      });
+      if (!overlaps) slots.push({ start: new Date(cursor), end: new Date(close) });
+    }
+  }
+  return slots;
 }
 
 /** Generate slots for a date based on availability + duration, excluding booked ones. */

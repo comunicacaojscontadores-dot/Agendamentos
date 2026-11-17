@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { roomLabel, isVehicle } from "@/lib/booking-utils";
 
 const createSchema = z.object({
   roomId: z.string().uuid(),
@@ -14,6 +15,7 @@ const createSchema = z.object({
   turnstileToken: z.string().max(2048).optional().default(""),
   allDay: z.boolean().optional().default(false),
   twoDays: z.boolean().optional().default(false),
+  untilClose: z.boolean().optional().default(false),
 });
 
 // Verifica o token anti-robô (Turnstile) com a Cloudflare.
@@ -90,7 +92,7 @@ export const createBooking = createServerFn({ method: "POST" })
 
     const { data: room } = await supabaseAdmin
       .from("rooms")
-      .select("id, name, room_number, location, notify_email_enabled, notification_email, google_calendar_enabled, google_meet_enabled")
+      .select("*") // inclui "kind" (sala/veículo) quando existir
       .eq("id", data.roomId)
       .maybeSingle();
     if (!room) return { ok: false as const, error: "Sala não encontrada." };
@@ -119,6 +121,15 @@ export const createBooking = createServerFn({ method: "POST" })
       fitsWindow = !!first && !!second &&
         startMin >= first.minStart && startMin < first.maxEnd &&
         dayDiff === k && endParts.hour * 60 + endParts.minute === second.maxEnd;
+    } else if (data.untilClose) {
+      // Até o fim do expediente: início dentro de alguma janela do dia e fim
+      // exatamente no fim da última janela.
+      const b = dayBounds(avail ?? [], dow);
+      fitsWindow = !!b && endMin === b.maxEnd && windowsToday.some((w) => {
+        const [sh, sm] = w.start_time.split(":").map(Number);
+        const [eh, em] = w.end_time.split(":").map(Number);
+        return startMin >= sh * 60 + sm && startMin < eh * 60 + em;
+      });
     } else if (data.allDay) {
       // Dia inteiro: precisa cobrir exatamente do início da primeira janela ao
       // fim da última janela do dia (a regra das reservas normais fica intacta).
@@ -192,9 +203,8 @@ export const createBooking = createServerFn({ method: "POST" })
       try {
         const { createCalendarEvent, isGoogleCalendarConfigured } = await import("./google-calendar.server");
         if (isGoogleCalendarConfigured()) {
-          const roomLabel = room.name ? `${room.name} (Sala ${room.room_number})` : `Sala ${room.room_number}`;
           const res = await createCalendarEvent({
-            summary: `Reunião — ${roomLabel}`,
+            summary: `Reunião — ${roomLabel(room)}`,
             description: [
               `Reserva feita por ${data.userName} (${data.userEmail}).`,
               `Local: ${room.location}`,
@@ -220,7 +230,8 @@ export const createBooking = createServerFn({ method: "POST" })
       await sendBookingConfirmation({
         bookingId: inserted.id,
         cancelToken: inserted.cancel_token,
-        roomLabel: room.name ? `${room.name} (Sala ${room.room_number})` : `Sala ${room.room_number}`,
+        roomLabel: roomLabel(room),
+        vehicle: isVehicle(room),
         startsAt: start,
         endsAt: end,
         userName: data.userName,
@@ -240,7 +251,7 @@ export const listAdminBookings = createServerFn({ method: "GET" })
     const { supabase } = context;
     const { data, error } = await supabase
       .from("bookings")
-      .select("id, room_id, user_name, user_email, guest_emails, notes, starts_at, ends_at, status, created_at, cancelled_at, cancelled_by, rooms(name, room_number, location)")
+      .select("id, room_id, user_name, user_email, guest_emails, notes, starts_at, ends_at, status, created_at, cancelled_at, cancelled_by, rooms(*)")
       .order("starts_at", { ascending: false })
       .limit(500);
     if (error) throw error;

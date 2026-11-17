@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, MapPin, Video, Clock, DoorOpen } from "lucide-react";
-import { DAYS_PT, DAYS_PT_SHORT, formatDuration, FULL_DAY_MIN, TWO_DAYS_MIN } from "@/lib/booking-utils";
+import { DAYS_PT, DAYS_PT_SHORT, formatDuration, FULL_DAY_MIN, TWO_DAYS_MIN, UNTIL_CLOSE_MIN, numberLabel } from "@/lib/booking-utils";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { toast } from "sonner";
 
@@ -20,10 +20,11 @@ interface Room {
   video_call: boolean; available_durations: number[]; active: boolean;
   notify_email_enabled: boolean; notification_email: string | null;
   google_calendar_enabled: boolean; google_meet_enabled: boolean;
+  kind?: string | null; // "room" (sala) ou "vehicle" (veículo)
 }
 interface Avail { id: string; room_id: string; day_of_week: number; start_time: string; end_time: string; }
 
-const DURATIONS = [15, 30, 45, 60, 90, 120, 240, 360, FULL_DAY_MIN, TWO_DAYS_MIN];
+const DURATIONS = [15, 30, 45, 60, 90, 120, 240, 360, UNTIL_CLOSE_MIN, FULL_DAY_MIN, TWO_DAYS_MIN];
 
 function AdminRooms() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -71,8 +72,8 @@ function AdminRooms() {
               <div className="flex justify-between items-start gap-3 flex-wrap">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-display font-bold text-lg">{r.name ?? `Sala ${r.room_number}`}</span>
-                    <Badge variant="outline">Sala {r.room_number}</Badge>
+                    <span className="font-display font-bold text-lg">{r.name ?? numberLabel(r)}</span>
+                    <Badge variant="outline">{numberLabel(r)}</Badge>
                     {!r.active && <Badge variant="secondary">Inativa</Badge>}
                     {r.video_call && <Badge className="bg-success/15 text-success border-0"><Video className="size-3 mr-1" />Vídeo</Badge>}
                   </div>
@@ -108,6 +109,7 @@ function AdminRooms() {
 function RoomDialog({ open, onOpenChange, editing, availability, onSaved }: {
   open: boolean; onOpenChange: (b: boolean) => void; editing: Room | null; availability: Avail[]; onSaved: () => void;
 }) {
+  const [kind, setKind] = useState<"room" | "vehicle">("room");
   const [number, setNumber] = useState("");
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
@@ -124,6 +126,7 @@ function RoomDialog({ open, onOpenChange, editing, availability, onSaved }: {
   useEffect(() => {
     if (open) {
       if (editing) {
+        setKind(editing.kind === "vehicle" ? "vehicle" : "room");
         setNumber(editing.room_number); setName(editing.name ?? "");
         setLocation(editing.location); setVideo(editing.video_call);
         setActive(editing.active); setDurations(editing.available_durations);
@@ -133,6 +136,7 @@ function RoomDialog({ open, onOpenChange, editing, availability, onSaved }: {
         setMeetEnabled(editing.google_meet_enabled);
         setWindows(availability.filter(a => a.room_id === editing.id).map(a => ({ day: a.day_of_week, start: a.start_time.slice(0,5), end: a.end_time.slice(0,5) })));
       } else {
+        setKind("room");
         setNumber(""); setName(""); setLocation(""); setVideo(false); setActive(true);
         setNotifyEnabled(false); setNotifyEmail("");
         setGcalEnabled(false); setMeetEnabled(false);
@@ -148,7 +152,7 @@ function RoomDialog({ open, onOpenChange, editing, availability, onSaved }: {
 
   const handleSave = async () => {
     if (!number.trim() || !location.trim() || durations.length === 0) {
-      toast.error("Preencha sala, local e ao menos uma duração.");
+      toast.error(`Preencha ${kind === "vehicle" ? "placa" : "número"}, local e ao menos uma duração.`);
       return;
     }
     if (notifyEnabled && !/\S+@\S+\.\S+/.test(notifyEmail.trim())) {
@@ -159,6 +163,7 @@ function RoomDialog({ open, onOpenChange, editing, availability, onSaved }: {
     }
     setSaving(true);
     const payload = {
+      kind,
       room_number: number.trim(), name: name.trim() || null, location: location.trim(),
       video_call: video, active, available_durations: durations,
       notify_email_enabled: notifyEnabled,
@@ -168,10 +173,11 @@ function RoomDialog({ open, onOpenChange, editing, availability, onSaved }: {
     };
     let roomId = editing?.id;
     if (editing) {
-      const { error } = await supabase.from("rooms").update({ ...payload, updated_at: new Date().toISOString() }).eq("id", editing.id);
+      // "as any": a coluna "kind" ainda não está nos tipos gerados (types.ts).
+      const { error } = await supabase.from("rooms").update({ ...payload, updated_at: new Date().toISOString() } as any).eq("id", editing.id);
       if (error) { setSaving(false); toast.error(error.message); return; }
     } else {
-      const { data, error } = await supabase.from("rooms").insert(payload).select("id").single();
+      const { data, error } = await supabase.from("rooms").insert(payload as any).select("id").single();
       if (error || !data) { setSaving(false); toast.error(error?.message ?? "Erro"); return; }
       roomId = data.id;
     }
@@ -195,9 +201,21 @@ function RoomDialog({ open, onOpenChange, editing, availability, onSaved }: {
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{editing ? "Editar sala" : "Nova sala"}</DialogTitle></DialogHeader>
         <div className="space-y-5 py-2">
+          <div>
+            <Label>Tipo</Label>
+            <div className="flex gap-2 mt-1.5">
+              {([["room", "Sala"], ["vehicle", "Veículo"]] as const).map(([k, l]) => (
+                <button key={k} type="button" onClick={() => setKind(k)}
+                  className={`px-3 py-1.5 rounded-md text-sm border-2 transition ${kind === k ? "border-secondary bg-secondary text-secondary-foreground" : "border-border hover:border-secondary/40"}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            {kind === "vehicle" && <p className="text-xs text-muted-foreground mt-1">Os textos do agendamento e dos e-mails falam em "veículo" e "reserva" em vez de "sala" e "reunião".</p>}
+          </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Número *</Label><Input value={number} onChange={e=>setNumber(e.target.value)} placeholder="1" /></div>
-            <div><Label>Nome (opcional)</Label><Input value={name} onChange={e=>setName(e.target.value)} placeholder="Sala de Reunião 1" /></div>
+            <div><Label>{kind === "vehicle" ? "Placa *" : "Número *"}</Label><Input value={number} onChange={e=>setNumber(e.target.value)} placeholder={kind === "vehicle" ? "ABC1D23" : "1"} /></div>
+            <div><Label>Nome (opcional)</Label><Input value={name} onChange={e=>setName(e.target.value)} placeholder={kind === "vehicle" ? "Carro – Fiat Argo" : "Sala de Reunião 1"} /></div>
           </div>
           <div><Label>Local *</Label><Input value={location} onChange={e=>setLocation(e.target.value)} placeholder="2º andar, ala oeste" /></div>
           <div className="flex gap-6">

@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Calendar as CalendarIcon, Clock, MapPin, Video, Check, Loader2, X } from "lucide-react";
-import { generateSlots, formatDuration, formatDateBR, formatTime, fullDayRange, twoDayRange, isWholeDays, TWO_DAYS_MIN, BOOKING_BUFFER_MIN, DAYS_PT_SHORT, type AvailabilityWindow, type BookedSlot } from "@/lib/booking-utils";
+import { generateSlots, generateUntilCloseSlots, UNTIL_CLOSE_MIN, isVehicle, numberLabel, formatDuration, formatDateBR, formatTime, fullDayRange, twoDayRange, isWholeDays, TWO_DAYS_MIN, BOOKING_BUFFER_MIN, DAYS_PT_SHORT, type AvailabilityWindow, type BookedSlot } from "@/lib/booking-utils";
 import { createBooking } from "@/lib/booking.functions";
 import { Turnstile } from "@/components/Turnstile";
 import { toast } from "sonner";
@@ -22,7 +22,7 @@ const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | u
 
 export const Route = createFileRoute("/agendar/$roomId")({ component: BookPage });
 
-interface Room { id: string; room_number: string; name: string | null; location: string; video_call: boolean; available_durations: number[]; }
+interface Room { id: string; room_number: string; name: string | null; location: string; video_call: boolean; available_durations: number[]; kind?: string | null; }
 
 function BookPage() {
   const { roomId } = Route.useParams();
@@ -67,11 +67,13 @@ function BookPage() {
   // "Dia inteiro" e "2 dias" ocupam dias completos e pulam a etapa de horário.
   const allDay = isWholeDays(duration);
   const twoDays = duration === TWO_DAYS_MIN;
+  const untilClose = duration === UNTIL_CLOSE_MIN;
 
   const slots = useMemo(() => {
     if (!date || !duration || allDay) return [];
+    if (untilClose) return generateUntilCloseSlots(date, availability, booked);
     return generateSlots(date, duration, availability, booked);
-  }, [date, duration, availability, booked, allDay]);
+  }, [date, duration, availability, booked, allDay, untilClose]);
 
   // No modo "dia inteiro", qualquer reserva que caia dentro do intervalo (com o
   // mesmo intervalo de segurança do servidor) impede ocupar o restante do dia.
@@ -83,6 +85,10 @@ function BookPage() {
         return slot.start.getTime() < be && slot.end.getTime() > bs;
       })
     : false;
+
+  // Textos mudam quando o item é um veículo (ex.: o carro da empresa).
+  const vehicle = isVehicle(room);
+  const what = vehicle ? "reserva" : "reunião";
 
   if (!room) {
     return <div className="min-h-screen bg-background"><SiteHeader /><div className="p-12 text-center text-muted-foreground">Carregando…</div></div>;
@@ -104,6 +110,7 @@ function BookPage() {
         turnstileToken: captchaToken,
         allDay: allDay && !twoDays,
         twoDays,
+        untilClose,
       },
     });
     setSubmitting(false);
@@ -127,8 +134,8 @@ function BookPage() {
         </Link>
 
         <div className="rounded-2xl bg-gradient-to-br from-primary to-secondary text-primary-foreground p-6 sm:p-7 mb-4 shadow-elevated">
-          <div className="text-xs uppercase tracking-wider text-primary-foreground/70 font-medium">Sala {room.room_number}</div>
-          <h1 className="font-display text-2xl font-bold mt-1">{room.name ?? `Sala ${room.room_number}`}</h1>
+          <div className="text-xs uppercase tracking-wider text-primary-foreground/70 font-medium">{vehicle ? "Veículo · " : ""}{numberLabel(room)}</div>
+          <h1 className="font-display text-2xl font-bold mt-1">{room.name ?? numberLabel(room)}</h1>
           <div className="flex flex-wrap gap-2 mt-3 text-sm">
             <span className="flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1"><MapPin className="size-3.5" /> {room.location}</span>
             {room.video_call && <span className="flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1"><Video className="size-3.5" /> Vídeo chamada</span>}
@@ -141,7 +148,7 @@ function BookPage() {
 
         {step === 1 && (
           <Card className="p-6 bg-surface shadow-soft">
-            <h2 className="font-display font-bold text-xl mb-1">Duração da reunião</h2>
+            <h2 className="font-display font-bold text-xl mb-1">Duração da {what}</h2>
             <p className="text-sm text-muted-foreground mb-5">Quanto tempo você precisa?</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {room.available_durations.map((d) => (
@@ -202,7 +209,7 @@ function BookPage() {
               <h2 className="font-display font-bold text-xl">Horários livres</h2>
               <Badge variant="secondary" className="bg-primary-soft text-primary border-0">{formatDateBR(date)}</Badge>
             </div>
-            <p className="text-sm text-muted-foreground mb-5">Selecione o início da sua reunião.</p>
+            <p className="text-sm text-muted-foreground mb-5">{untilClose ? `Selecione o início — a ${what} vai até o fim do expediente.` : `Selecione o início da sua ${what}.`}</p>
             {slots.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground">
                 Nenhum horário disponível neste dia.
@@ -240,7 +247,7 @@ function BookPage() {
                 : <>Reservando <strong className="text-foreground">{formatDateBR(slot.start)}</strong>
               {allDay
                 ? <> — <strong className="text-foreground">dia inteiro</strong> ({formatTime(slot.start)} às {formatTime(slot.end)}).</>
-                : <> das <strong className="text-foreground">{formatTime(slot.start)}</strong> às <strong className="text-foreground">{formatTime(slot.end)}</strong>.</>}</>}
+                : <> das <strong className="text-foreground">{formatTime(slot.start)}</strong> às <strong className="text-foreground">{formatTime(slot.end)}</strong>{untilClose ? " (até o fim do expediente)" : ""}.</>}</>}
             </p>
             {dayConflict && (
               <div className="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-sm p-3">
@@ -259,13 +266,13 @@ function BookPage() {
                 <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="maria@empresa.com" maxLength={255} />
               </div>
               <div>
-                <Label htmlFor="guests">E-mails dos convidados</Label>
+                <Label htmlFor="guests">{vehicle ? "E-mails de quem vai junto" : "E-mails dos convidados"}</Label>
                 <Input id="guests" value={guestsRaw} onChange={(e) => setGuestsRaw(e.target.value)} placeholder="joao@empresa.com, ana@empresa.com" />
                 <p className="text-xs text-muted-foreground mt-1">Separe por vírgula ou espaço.</p>
               </div>
               <div>
-                <Label htmlFor="notes">Observações para preparar a reunião</Label>
-                <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Pauta, contexto, materiais necessários…" maxLength={2000} />
+                <Label htmlFor="notes">{vehicle ? "Observações (destino, motivo do uso)" : "Observações para preparar a reunião"}</Label>
+                <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder={vehicle ? "Ex.: visita ao cliente X, ida ao cartório…" : "Pauta, contexto, materiais necessários…"} maxLength={2000} />
               </div>
             </div>
             {TURNSTILE_SITE_KEY && (

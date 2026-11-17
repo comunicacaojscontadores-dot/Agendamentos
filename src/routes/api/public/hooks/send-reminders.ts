@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getRequest } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendBookingReminder } from "@/lib/email.server";
+import { roomLabel, isVehicle } from "@/lib/booking-utils";
 
 // Endpoint chamado por pg_cron a cada minuto. Procura agendamentos ativos
 // que iniciam entre 14 e 16 minutos a partir de agora e que ainda não
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
 
         const { data: bookings, error } = await supabaseAdmin
           .from("bookings")
-          .select("id, cancel_token, user_name, user_email, guest_emails, notes, starts_at, ends_at, rooms(name, room_number)")
+          .select("id, cancel_token, user_name, user_email, guest_emails, notes, starts_at, ends_at, rooms(*)")
           .eq("status", "active")
           .eq("reminder_sent", false)
           .gte("starts_at", from)
@@ -41,12 +42,12 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
         let sent = 0;
         for (const b of bookings ?? []) {
           const room = (b as any).rooms;
-          const roomLabel = room?.name ? `${room.name} (Sala ${room.room_number})` : `Sala ${room?.room_number ?? ""}`;
           try {
             await sendBookingReminder({
               bookingId: b.id,
               cancelToken: b.cancel_token,
-              roomLabel,
+              roomLabel: roomLabel(room),
+              vehicle: isVehicle(room),
               startsAt: new Date(b.starts_at),
               endsAt: new Date(b.ends_at),
               userName: b.user_name,

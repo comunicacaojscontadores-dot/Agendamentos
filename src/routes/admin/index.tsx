@@ -11,8 +11,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Ban, Building2, Calendar, CalendarClock, CalendarDays, CheckCircle2, Clock, Mail, MapPin, Search, Users } from "lucide-react";
-import { formatDateBR, formatTime, formatTimeRange } from "@/lib/booking-utils";
+import { Ban, Building2, Calendar, Car, CalendarClock, CalendarDays, CheckCircle2, Clock, Mail, MapPin, Search, Users } from "lucide-react";
+import { formatDateBR, formatTime, formatTimeRange, isVehicle, numberLabel } from "@/lib/booking-utils";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
 export const Route = createFileRoute("/admin/")({ component: AdminBookings });
@@ -165,10 +165,10 @@ function Section({ title, tone, bookings, onCancel, cancellingId }: SectionProps
             {/* Cabeçalho da sala */}
             <div className="flex items-center gap-2.5 flex-wrap mb-3 pb-2.5 border-b border-border">
               <div className="size-8 rounded-lg bg-primary-soft text-primary grid place-items-center shrink-0">
-                <Building2 className="size-4" />
+                {isVehicle(g.room) ? <Car className="size-4" /> : <Building2 className="size-4" />}
               </div>
-              <h3 className="font-display font-bold">{g.room?.name ?? `Sala ${g.room?.room_number}`}</h3>
-              <Badge variant="outline" className="text-[10px]">Sala {g.room?.room_number}</Badge>
+              <h3 className="font-display font-bold">{g.room?.name ?? numberLabel(g.room)}</h3>
+              <Badge variant="outline" className="text-[10px]">{numberLabel(g.room)}</Badge>
               {g.room?.location && (
                 <span className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="size-3" /> {g.room.location}</span>
               )}

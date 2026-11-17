@@ -125,6 +125,10 @@ create table public.bookings (
   cancelled_by text
 );
 
+-- Tipo do item: 'room' (sala) ou 'vehicle' (veículo, ex.: o carro). Muda só os textos.
+alter table public.rooms add column if not exists kind text not null default 'room'
+  check (kind in ('room','vehicle'));
+
 alter table public.bookings enable row level security;
 
 alter table public.bookings
